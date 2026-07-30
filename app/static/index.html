@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Subtitle Project — AI SRT Translator</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">SUBTITLE PROJECT · FIRST MVP</p>
+        <h1>Translate every subtitle.<br /><span>Keep every timestamp.</span></h1>
+        <p class="intro">
+          Add multiple SRT or timed CSV files, choose a language, and receive a translated ZIP.
+          Cue numbers and timing stay under local control.
+        </p>
+      </header>
+
+      <section class="workspace" aria-labelledby="translator-title">
+        <div class="workspace-heading">
+          <div>
+            <p class="step">01 / INPUT</p>
+            <h2 id="translator-title">Batch translator</h2>
+          </div>
+          <div id="serviceBadge" class="status-badge">Checking service…</div>
+        </div>
+
+        <form id="translationForm">
+          <label id="dropZone" class="drop-zone" for="files">
+            <input id="files" name="files" type="file" accept=".srt,.csv,application/x-subrip,text/csv" multiple required />
+            <span class="drop-icon">＋</span>
+            <strong>Drop SRT or CSV files here</strong>
+            <span>timed CSV columns: St, Et, Subtitle_* · up to 20 files</span>
+          </label>
+
+          <div id="filePanel" class="file-panel" hidden>
+            <div class="file-panel-header">
+              <strong id="fileCount">0 files</strong>
+              <button id="clearFiles" class="text-button" type="button">Clear all</button>
+            </div>
+            <ul id="fileList" aria-live="polite"></ul>
+          </div>
+
+          <div class="language-grid">
+            <label>
+              <span>Source language</span>
+              <input name="source_language" list="languages" placeholder="Auto-detect" maxlength="80" />
+            </label>
+            <div class="arrow" aria-hidden="true">→</div>
+            <label>
+              <span>Target language</span>
+              <input name="target_language" list="languages" placeholder="e.g. Persian (Farsi)" maxlength="80" required />
+            </label>
+          </div>
+
+          <datalist id="languages">
+            <option value="Persian (Farsi)"></option>
+            <option value="English"></option>
+            <option value="Korean"></option>
+            <option value="Arabic"></option>
+            <option value="French"></option>
+            <option value="German"></option>
+            <option value="Spanish"></option>
+            <option value="Japanese"></option>
+            <option value="Simplified Chinese"></option>
+          </datalist>
+
+          <button id="submitButton" class="primary-button" type="submit">
+            <span>Translate files</span><span aria-hidden="true">↗</span>
+          </button>
+
+          <div id="message" class="message" role="status" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <section class="principles" aria-label="Translation guarantees">
+        <article><span>01</span><h3>Local parsing</h3><p>Timing and cue IDs are never delegated to the model.</p></article>
+        <article><span>02</span><h3>Batch processing</h3><p>Large subtitle sets are split into validated AI requests.</p></article>
+        <article><span>03</span><h3>Portable output</h3><p>Every translated SRT or CSV returns as UTF-8 inside one ZIP.</p></article>
+      </section>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
