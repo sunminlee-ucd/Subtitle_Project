@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "desktop*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
