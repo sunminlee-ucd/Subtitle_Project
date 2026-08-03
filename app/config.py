@@ -19,18 +19,22 @@ def _positive_int(name: str, default: int) -> int:
 class Settings:
     openai_api_key: str | None
     openai_model: str
+    openai_review_model: str
     translation_provider: str
     max_files: int
     max_file_size_bytes: int
     translation_batch_characters: int
+    translation_concurrency: int
 
     @classmethod
     def from_environment(cls) -> Settings:
         return cls(
             openai_api_key=os.getenv("OPENAI_API_KEY") or None,
-            openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6"),
+            openai_model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+            openai_review_model=os.getenv("OPENAI_REVIEW_MODEL", "gpt-5.6-terra"),
             translation_provider=os.getenv("TRANSLATION_PROVIDER", "openai").lower(),
             max_files=_positive_int("MAX_FILES", 20),
             max_file_size_bytes=_positive_int("MAX_FILE_SIZE_BYTES", 5 * 1024 * 1024),
             translation_batch_characters=_positive_int("TRANSLATION_BATCH_CHARACTERS", 8000),
+            translation_concurrency=min(_positive_int("TRANSLATION_CONCURRENCY", 2), 4),
         )

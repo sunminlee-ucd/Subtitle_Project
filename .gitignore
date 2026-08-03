@@ -6,12 +6,19 @@ __pycache__/
 .venv-overlay/
 venv/
 .env
+API key for openAI.txt
+API key for open AI/
 dist/
-artifacts/*.csv
-artifacts/*.checkpoint.json
+dist_*/
+artifacts/
 build/
 *.spec
 *.egg-info/
+.translation_checkpoints/
+*.checkpoint.json
+*.source.csv
+*.translation_summary.json
+*.exe
 .DS_Store
 input/*
 !input/README.md

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from app.srt import parse_srt
+
 TRANSPARENT_COLOR = "#010203"
 
 
@@ -54,6 +56,33 @@ def load_csv_cues(path: Path, requested_column: str | None = None) -> tuple[list
     if not cues:
         raise ValueError("No timed subtitle rows were found in the CSV file.")
     return cues, column
+
+
+def load_srt_cues(path: Path) -> tuple[list[OverlayCue], str]:
+    document = parse_srt(path.read_bytes())
+    cues: list[OverlayCue] = []
+    for cue in document.cues:
+        start, end = cue.timing.split("-->", maxsplit=1)
+        cues.append(
+            OverlayCue(
+                start=timestamp_to_seconds(start),
+                end=timestamp_to_seconds(end.split(maxsplit=1)[0]),
+                text=cue.text,
+            )
+        )
+    return cues, "SRT"
+
+
+def load_subtitle_cues(
+    path: Path,
+    requested_column: str | None = None,
+) -> tuple[list[OverlayCue], str]:
+    suffix = path.suffix.casefold()
+    if suffix == ".srt":
+        return load_srt_cues(path)
+    if suffix == ".csv":
+        return load_csv_cues(path, requested_column)
+    raise ValueError("Choose an SRT or timed subtitle CSV file.")
 
 
 def choose_text_column(fieldnames: list[str]) -> str:
@@ -301,7 +330,7 @@ class SubtitleOverlay:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Display a timed subtitle CSV as an overlay.")
+    parser = argparse.ArgumentParser(description="Display an SRT or timed CSV as an overlay.")
     parser.add_argument("file", nargs="?", type=Path)
     parser.add_argument("--column", default=None)
     return parser.parse_args()
@@ -322,9 +351,14 @@ def main() -> None:
     path = args.file
     if path is None:
         selected = filedialog.askopenfilename(
-            title="Choose a translated subtitle CSV",
+            title="Choose a translated subtitle file",
             initialdir=default_output_directory(),
-            filetypes=(("Subtitle CSV", "*.csv"), ("All files", "*.*")),
+            filetypes=(
+                ("Subtitle files", "*.srt *.csv"),
+                ("SRT subtitles", "*.srt"),
+                ("Subtitle CSV", "*.csv"),
+                ("All files", "*.*"),
+            ),
         )
         if not selected:
             root.destroy()
@@ -332,7 +366,7 @@ def main() -> None:
         path = Path(selected)
 
     try:
-        cues, column = load_csv_cues(path, args.column)
+        cues, column = load_subtitle_cues(path, args.column)
     except (OSError, KeyError, TypeError, ValueError) as exc:
         messagebox.showerror("Could not open subtitles", str(exc))
         root.destroy()

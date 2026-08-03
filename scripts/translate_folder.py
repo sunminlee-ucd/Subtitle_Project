@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-language", default="Korean")
     parser.add_argument("--source-column", default="Subtitle_KO")
     parser.add_argument("--model", default=None)
+    parser.add_argument("--review-model", default=None)
     return parser.parse_args()
 
 
@@ -37,7 +38,9 @@ async def main() -> None:
         translator = OpenAITranslator(
             api_key=api_key,
             model=args.model or settings.openai_model,
+            review_model=args.review_model or settings.openai_review_model,
             batch_character_limit=settings.translation_batch_characters,
+            max_concurrent_requests=settings.translation_concurrency,
         )
 
     try:

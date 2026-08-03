@@ -52,7 +52,9 @@ def get_translator(settings: Annotated[Settings, Depends(get_settings)]) -> Subt
     return OpenAITranslator(
         api_key=settings.openai_api_key,
         model=settings.openai_model,
+        review_model=settings.openai_review_model,
         batch_character_limit=settings.translation_batch_characters,
+        max_concurrent_requests=settings.translation_concurrency,
     )
 
 
@@ -68,6 +70,7 @@ async def health(settings: Annotated[Settings, Depends(get_settings)]) -> dict[s
         "status": "ok",
         "provider": settings.translation_provider,
         "model": settings.openai_model,
+        "review_model": settings.openai_review_model,
         "translation_ready": str(configured).lower(),
     }
 

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Subtitle Sync</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        width: 360px;
+        margin: 0;
+        background: #0b0d0b;
+        color: #f4f4ee;
+        font: 13px/1.45 Arial, sans-serif;
+      }
+      main { padding: 17px; }
+      h1 { color: #beff4a; font-size: 14px; letter-spacing: 0.08em; margin: 0 0 10px; }
+      h2 { color: #d7dbd0; font-size: 12px; margin: 15px 0 8px; text-transform: uppercase; }
+      #status { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+      #fileStatus { color: #aeb3a7; min-height: 19px; overflow-wrap: anywhere; }
+      .file-picker {
+        display: block;
+        border: 1px dashed #69705f;
+        border-radius: 9px;
+        cursor: pointer;
+        margin-top: 10px;
+        padding: 11px;
+        text-align: center;
+      }
+      .file-picker:hover { border-color: #beff4a; }
+      input[type="file"] { display: none; }
+      .control { margin-top: 11px; }
+      .control-row { align-items: center; display: flex; gap: 8px; }
+      .control-row label { flex: 1; }
+      output { color: #beff4a; min-width: 56px; text-align: right; }
+      input[type="range"] { width: 100%; accent-color: #beff4a; }
+      button {
+        border: 1px solid #555d4e;
+        border-radius: 7px;
+        background: #20241e;
+        color: #f4f4ee;
+        cursor: pointer;
+        padding: 7px 10px;
+      }
+      button:hover { border-color: #beff4a; }
+      .offset-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+      .capture-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+      .capture-status { color: #aeb3a7; min-height: 19px; }
+      select {
+        border: 1px solid #555d4e;
+        border-radius: 7px;
+        background: #20241e;
+        color: #f4f4ee;
+        padding: 6px 8px;
+      }
+      input[type="text"] {
+        width: 100%;
+        border: 1px solid #555d4e;
+        border-radius: 7px;
+        background: #151813;
+        color: #f4f4ee;
+        margin-top: 6px;
+        padding: 8px;
+      }
+      button:disabled { cursor: not-allowed; opacity: 0.45; }
+      .clear { color: #ffb9ae; margin-top: 12px; width: 100%; }
+      .toggle { align-items: center; color: #aeb3a7; display: flex; gap: 8px; margin-top: 12px; }
+      .toggle input { accent-color: #beff4a; }
+      dl { display: grid; grid-template-columns: 92px 1fr; gap: 4px 7px; margin: 0; }
+      dt { color: #92968c; }
+      dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .note { border-top: 1px solid #2c3029; color: #92968c; margin-top: 14px; padding-top: 10px; }
+      .error { color: #ff9f91 !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>NETFLIX SRT SUBTITLE SYNC</h1>
+      <div id="status">Checking active tab...</div>
+      <div id="fileStatus">No SRT loaded</div>
+
+      <h2>Automatic Netflix subtitle track</h2>
+      <div id="trackProbeStatus" class="capture-status">Waiting for the page probe</div>
+      <div class="capture-actions">
+        <button id="startTrackProbe" type="button">Recover cached response</button>
+        <button id="stopTrackProbe" type="button">Pause probe</button>
+      </div>
+      <div class="control">
+        <label for="trackCandidate">Detected response</label>
+        <select id="trackCandidate">
+          <option value="">No candidate detected</option>
+        </select>
+      </div>
+      <div class="capture-actions">
+        <button id="downloadTrackCandidate" type="button">Download raw candidate</button>
+        <button id="clearTrackProbe" type="button">Clear probe</button>
+      </div>
+      <div class="note">
+        The probe starts before Netflix loads and keeps early subtitle responses until this popup
+        opens. After updating the extension, reload the Netflix tab once; changing subtitle
+        languages is no longer required. Downloads use the current title, episode, and subtitle
+        language when Netflix exposes them. Only the most complete candidate is kept per video.
+        Authentication query strings and cookies are not saved.
+      </div>
+
+      <h2>Capture Netflix subtitles</h2>
+      <div id="captureStatus" class="capture-status">Not capturing</div>
+      <div class="control-row">
+        <label for="captureRate">Playback speed</label>
+        <select id="captureRate">
+          <option value="1">1.0x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2.0x</option>
+          <option value="3" selected>3.0x</option>
+        </select>
+      </div>
+      <div class="capture-actions">
+        <button id="startCapture" type="button">Start new capture</button>
+        <button id="stopCapture" type="button">Stop capture</button>
+        <button id="downloadCsv" type="button">Download CSV</button>
+        <button id="downloadSrt" type="button">Download SRT</button>
+      </div>
+      <div class="control">
+        <label for="downloadFolder">Downloads subfolder</label>
+        <input
+          id="downloadFolder"
+          type="text"
+          value="Subtitle_Project/captures"
+          placeholder="Subtitle_Project/captures"
+        />
+        <div id="downloadFolderStatus" class="capture-status">Saved automatically</div>
+      </div>
+      <button id="clearCapture" class="clear" type="button">Clear captured subtitles</button>
+      <div class="note">
+        Enable a Netflix subtitle language first. Netflix native captions are used before
+        Language Reactor captions.
+      </div>
+
+      <h2>3. Display translated subtitles</h2>
+      <label class="file-picker" for="srtFile">Choose translated SRT file</label>
+      <input id="srtFile" type="file" accept=".srt,application/x-subrip,text/plain" />
+
+      <h2>Subtitle controls</h2>
+      <div class="control">
+        <div class="control-row">
+          <label for="offset">Timing offset</label>
+          <output id="offsetValue">+0.0 s</output>
+        </div>
+        <input id="offset" type="range" min="-30" max="30" step="0.1" value="0" />
+        <div class="offset-actions">
+          <button type="button" data-offset-delta="-0.5">0.5 s earlier</button>
+          <button type="button" data-offset-delta="0.5">0.5 s later</button>
+        </div>
+      </div>
+
+      <div class="control">
+        <div class="control-row">
+          <label for="fontSize">Font size</label>
+          <output id="fontSizeValue">38 px</output>
+        </div>
+        <input id="fontSize" type="range" min="20" max="72" step="1" value="38" />
+      </div>
+
+      <div class="control">
+        <div class="control-row">
+          <label for="bottom">Height from bottom</label>
+          <output id="bottomValue">10%</output>
+        </div>
+        <input id="bottom" type="range" min="3" max="45" step="1" value="10" />
+      </div>
+
+      <button id="clear" class="clear" type="button">Remove loaded subtitles</button>
+      <label class="toggle">
+        <input id="showDiagnostics" type="checkbox" />
+        Show playback diagnostic panel
+      </label>
+
+      <h2>Playback</h2>
+      <dl>
+        <dt>Current time</dt><dd id="time">--</dd>
+        <dt>Duration</dt><dd id="duration">--</dd>
+        <dt>Playback</dt><dd id="playback">--</dd>
+        <dt>Rate</dt><dd id="rate">--</dd>
+        <dt>Fullscreen</dt><dd id="fullscreen">--</dd>
+      </dl>
+      <div class="note">Positive timing offset delays subtitles. Files stay in this tab only.</div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
