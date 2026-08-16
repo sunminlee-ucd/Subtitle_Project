@@ -10,7 +10,7 @@ steps:
     entrypoint: bash
     args:
       - -c
-      - pip install --quiet -e '.[dev]' && ruff check . && pytest
+      - apt-get update -qq && apt-get install -y -qq --no-install-recommends tk && pip install --quiet -e '.[dev]' && ruff check . && pytest
 
   - id: build
     name: gcr.io/cloud-builders/docker
