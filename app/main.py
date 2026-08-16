@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import Settings
@@ -32,7 +32,6 @@ app = FastAPI(
     version="0.1.0",
     description="Translate multiple SRT files while preserving subtitle timing.",
 )
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.mount("/portal-assets", StaticFiles(directory=PORTAL_DIR), name="portal-assets")
 
 
@@ -61,8 +60,8 @@ def get_translator(settings: Annotated[Settings, Depends(get_settings)]) -> Subt
 
 
 @app.get("/", include_in_schema=False)
-async def index() -> FileResponse:
-    return FileResponse(BASE_DIR / "static" / "index.html")
+async def index() -> RedirectResponse:
+    return RedirectResponse(url="/customer", status_code=307)
 
 
 @app.get("/customer", include_in_schema=False)

@@ -75,3 +75,10 @@ def test_customer_and_admin_web_routes_exist() -> None:
     assert '@app.get("/admin"' in main_source
     assert (PORTAL / "index.html").exists()
     assert (PORTAL / "admin.html").exists()
+
+
+def test_public_root_redirects_to_customer_portal() -> None:
+    main_source = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
+
+    assert 'RedirectResponse(url="/customer", status_code=307)' in main_source
+    assert 'app.mount("/static"' not in main_source
