@@ -24,6 +24,7 @@ from app.srt import SrtParseError, parse_srt
 from app.translator import EchoTranslator, OpenAITranslator, SubtitleTranslator, TranslationError
 
 BASE_DIR = Path(__file__).resolve().parent
+PORTAL_DIR = BASE_DIR.parent / "customer_portal"
 SAFE_LANGUAGE_PATTERN = re.compile(r"^[\w .(),'\-/]{2,80}$", re.UNICODE)
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app = FastAPI(
     description="Translate multiple SRT files while preserving subtitle timing.",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.mount("/portal-assets", StaticFiles(directory=PORTAL_DIR), name="portal-assets")
 
 
 @lru_cache
@@ -61,6 +63,16 @@ def get_translator(settings: Annotated[Settings, Depends(get_settings)]) -> Subt
 @app.get("/", include_in_schema=False)
 async def index() -> FileResponse:
     return FileResponse(BASE_DIR / "static" / "index.html")
+
+
+@app.get("/customer", include_in_schema=False)
+async def customer_portal() -> FileResponse:
+    return FileResponse(PORTAL_DIR / "index.html")
+
+
+@app.get("/admin", include_in_schema=False)
+async def admin_portal() -> FileResponse:
+    return FileResponse(PORTAL_DIR / "admin.html")
 
 
 @app.get("/api/health")

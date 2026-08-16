@@ -1,27 +1,32 @@
 {
   "manifest_version": 3,
-  "name": "Netflix SRT Subtitle Sync",
-  "version": "0.7.0",
-  "description": "Downloads Netflix timed text for local translation and displays translated SRT in sync.",
+  "name": "OTT SRT Subtitle Sync",
+  "version": "0.12.1",
+  "description": "Captures Netflix and Disney+ timed text for local translation and displays translated SRT in sync.",
   "permissions": ["activeTab", "downloads", "storage"],
   "host_permissions": [
     "https://*.netflix.com/*",
+    "https://*.disneyplus.com/*",
     "https://*.youtube.com/*"
   ],
   "action": {
-    "default_title": "Netflix SRT Subtitle Sync",
+    "default_title": "OTT SRT Subtitle Sync",
     "default_popup": "popup.html"
   },
   "content_scripts": [
     {
-      "matches": ["https://*.netflix.com/*"],
-      "js": ["netflix_track_probe.js"],
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.disneyplus.com/*"
+      ],
+      "js": ["ott_track_probe.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
       "matches": [
         "https://*.netflix.com/*",
+        "https://*.disneyplus.com/*",
         "https://*.youtube.com/*"
       ],
       "js": ["subtitle_core.js", "content.js"],

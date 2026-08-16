@@ -4,10 +4,21 @@ import zipfile
 
 from fastapi.testclient import TestClient
 
+from app.config import Settings
 from app.main import app, get_translator
 from app.translator import EchoTranslator
 
 client = TestClient(app)
+
+
+def test_default_translation_model_prioritizes_context_quality(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_REVIEW_MODEL", raising=False)
+
+    settings = Settings.from_environment()
+
+    assert settings.openai_model == "gpt-5.6-terra"
+    assert settings.openai_review_model == "gpt-5.6-terra"
 
 
 def test_health_endpoint() -> None:

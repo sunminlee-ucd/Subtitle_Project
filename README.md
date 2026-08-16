@@ -19,7 +19,7 @@ transparent desktop overlay.
 | --- | --- | --- |
 | Web translator | Implemented | Upload multiple SRT/CSV files and download translated results in one ZIP |
 | AI translation | Implemented | Batched OpenAI Responses API calls aligned to timed cue order |
-| Cost-optimized quality mode | Implemented | `gpt-5-mini` translates normally; only difficult cues escalate to `gpt-5.6-terra` |
+| Context-quality routing | Implemented | `gpt-5.6-terra` translates normally; sensitive cues receive focused Terra review with more reasoning |
 | Live progress | Implemented | GUI and CLI show episode, stage, batch count, and overall percentage |
 | Timed CSV | Implemented | Preserves `St`/`Et` and adds a target column such as `Subtitle_FA` |
 | Episode splitter | Implemented | Detects timeline resets, keeps partial final captures, and creates one SRT per episode |
@@ -28,11 +28,39 @@ transparent desktop overlay.
 | Windows overlay | Implemented | Opens SRT/CSV in a transparent, always-on-top, click-through display |
 | Overlay synchronization | Manual MVP | Play, pause, seek, and offset controls use the overlay's own timer |
 | Browser synchronization | Implemented MVP | Chrome extension loads local SRT and follows Netflix/YouTube playback |
+| Customer extension | Implemented scaffold | Login, authorized remote subtitle selection, overlay, and Study mode without capture/download capabilities |
+| Customer/admin portal | Implemented scaffold | Video requests, error reports, subtitle library upload, and per-customer access grants |
 | iPad version | Deferred | Planned after the Windows workflow is complete |
 
 The current application does not download, decrypt, transcribe, or extract streaming video.
 Users supply subtitle files they own or have permission to process. The Windows overlay does
 not yet detect playback state from Netflix or YouTube; synchronization is manual.
+
+## Customer distribution architecture
+
+The operator and customer Chrome extensions are separate builds:
+
+```text
+chrome_extension/       Operator-only capture, translation workflow, and overlay
+customer_extension/     Customer login, authorized selection, overlay, and Study mode
+customer_portal/        Customer requests/error reports and the administrator page
+supabase/schema.sql      Authentication-linked data model and Row Level Security policies
+```
+
+The customer manifest has no Chrome `downloads` permission, capture probe, local SRT picker, or
+export action. Supabase Row Level Security returns a subtitle only when the signed-in user has an
+active row in `subtitle_grants`. Use only a Supabase `sb_publishable_...` key in browser code;
+secret/service-role keys must never be placed in either client.
+
+For the first local setup, follow `supabase/README.md`, update both customer `config.js` files,
+and run the FastAPI app. Customer support links are then available at:
+
+- <http://127.0.0.1:8000/customer>
+- <http://127.0.0.1:8000/admin>
+
+Removing download controls discourages normal file saving, but it is not DRM. Any subtitle shown
+in a browser has been delivered to that browser and can be recovered by a sufficiently technical
+user. The enforceable boundary in this MVP is customer authorization, not absolute copy prevention.
 
 ## MVP features
 
@@ -68,11 +96,16 @@ uvicorn app.main:app --reload
 Open <http://127.0.0.1:8000>. API documentation is available at
 <http://127.0.0.1:8000/docs>.
 
+## Cloud Run deployment
+
+Production is deployed to Cloud Run in `europe-west2`. The regional Cloud Build trigger watches
+the `master` branch, runs the test suite from `cloudbuild.yaml`, and deploys only after tests pass.
+
 OpenAI recommends the Responses API for new direct model requests. The default model can be
 changed without code edits:
 
 ```powershell
-$env:OPENAI_MODEL="gpt-5-mini"
+$env:OPENAI_MODEL="gpt-5.6-terra"
 $env:OPENAI_REVIEW_MODEL="gpt-5.6-terra"
 ```
 
@@ -142,10 +175,10 @@ CLI `--include-incomplete-final` option can override this only when the user kno
 Every complete episode uses a multi-stage translation workflow:
 
 1. Analyze the episode summary, emotional tone, formality, character speech styles,
-   relationships, names, and recurring terminology.
+   relationships, recurring terminology, and a source-name to target-script phonetic name map.
 2. Translate each batch using that episode-wide consistency guide.
 3. Detect ambiguous or culturally difficult cues, including idioms, omitted subjects,
-   honorifics, sarcasm, wordplay, and unclear pronouns.
+   honorifics, sarcasm, wordplay, unclear pronouns, grammatical-person changes, and missing names.
 4. Re-translate difficult cues with the episode context. Genuine ambiguity is preserved instead
    of inventing missing facts.
 5. Run a focused second pass only for the highest-risk cues instead of retranslating the episode.
@@ -157,8 +190,8 @@ The Windows processor writes an atomic checkpoint after context analysis and aft
 successful translation group. If a request, connection, or application fails, run the same input
 again with the same source/target languages and models. Completed cues are loaded from
 `output/episodes/.translation_checkpoints` and only unfinished cues are sent to the API. A changed
-source file, language, or model automatically gets a different fingerprint and will not reuse
-incompatible translations.
+source file, language, model, or translation-prompt version automatically gets a different
+fingerprint and will not reuse incompatible translations.
 
 Each translated SRT has a matching `*.quality.json` report. It contains the episode guide,
 warnings, and difficult or corrected cues with the source text, applied final translation,
@@ -167,10 +200,12 @@ SRT using the safest contextual translation and explicitly flagged for human rev
 
 ### Cost controls
 
-The desktop processor defaults to `gpt-5-mini`, a low-cost model suitable for well-defined,
-high-volume work. Before loading the private key or starting translation, the GUI displays a
+The desktop processor defaults to `gpt-5.6-terra` for stronger contextual translation of omitted
+subjects, person references, gender, names, and dialogue relationships. Before loading the private
+key or starting translation, the GUI displays a
 conservative estimate of input/output tokens, maximum API requests, maximum reviewed cues, and
-standard-rate USD cost. The default `$0.25` guard blocks a run whose estimate exceeds that value.
+standard-rate USD cost. The default `EUR 1.00` guard conservatively blocks a run whose estimated
+standard-rate cost exceeds USD 1.00.
 
 To keep quality high without paying for a complete second translation:
 
@@ -179,8 +214,9 @@ To keep quality high without paying for a complete second translation:
 - Local checks also detect unchanged and abnormally long translations without an API call.
 - Only the highest-risk 15% of cues can be sent for targeted re-translation and final review.
 - Additional uncertain cues remain visible in the quality report for human review.
-- Repeated episode context uses a stable prompt-cache key, GPT-5 models use low reasoning effort,
-  and response token limits prevent unexpectedly long outputs.
+- Repeated episode context uses a stable prompt-cache key. Routine batches use low reasoning;
+  episode analysis and sensitive-cue review use medium reasoning. Response token limits prevent
+  unexpectedly long outputs.
 - AI results are aligned to cues by input position, which is already chronological. Returned ID
   values are ignored and reassigned locally. Only a missing or extra translation item triggers
   smaller retries for the affected batch, capped at three split levels to limit recovery charges.
@@ -219,7 +255,13 @@ pyinstaller --noconfirm --clean --onefile --windowed `
 
 The **Analyze episodes** button is local and free. The translation button asks for explicit
 confirmation before sending subtitle text to OpenAI; an API key with available paid credit is
-required.
+required. The desktop app uses a conservative **EUR 1.00** estimated-cost guard by default
+(checked offline as a USD 1.00 standard-rate estimate). This is a safety estimate rather than an
+exchange-rate or billing guarantee.
+
+Desktop settings are restored at the next launch and saved under the current Windows user's local
+application-data folder. Use **Reset to defaults** to restore and immediately save the original
+settings. The API key override is deliberately excluded from the saved settings.
 
 For the local Windows build, `API key for openAI.txt` in the project root is loaded only when
 translation starts. It may contain either a raw `sk-...` key or an
@@ -258,19 +300,20 @@ The file picker opens the project `output` folder by default.
 ## Chrome SRT playback synchronization
 
 `chrome_extension` contains an unpacked Manifest V3 extension that detects the largest visible
-Netflix or YouTube `<video>` element, loads a user-selected local SRT file, and renders the
+Netflix, Disney+, or YouTube `<video>` element, loads a user-selected local SRT file, and renders the
 matching cue from the video's current time. Play, pause, seeking, playback-rate changes, and
 fullscreen transitions are followed automatically. The extension does not capture or transmit
 video, audio, or the selected subtitle file.
 
-The same popup captures subtitles already rendered by Netflix into `St,Et,Subtitle` CSV or SRT.
-Netflix native captions are preferred; Language Reactor is only a fallback. Captures remain local
+The same popup captures subtitles already rendered by Netflix or Disney+ into `St,Et,Subtitle`
+CSV or SRT. Native captions and active browser text tracks are preferred; Language Reactor is only
+a Netflix fallback. Captures remain local
 to the active tab and can run at 1x, 1.5x, 2x, or 3x playback speed. A persistent Downloads
 subfolder can be configured once for automatic CSV/SRT export without repeated prompts.
 
 The extension also includes an experimental direct subtitle-track probe. It watches for TTML,
-WebVTT, XML, or subtitle-shaped JSON responses that the signed-in Netflix player normally receives
-when a native subtitle language is selected. This can validate whether a complete timed-text track
+WebVTT, XML, SRT, or subtitle-shaped responses that the signed-in Netflix or Disney+ player
+normally receives when a native subtitle language is selected. This can validate whether a timed-text track
 is available for direct SRT conversion without playing the full episode. The probe removes URL
 query strings and never stores cookies, authorization headers, video, audio, or DRM data. See
 `chrome_extension/README.md` for the test procedure.
@@ -288,14 +331,19 @@ To install it locally without publishing:
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
 3. Choose **Load unpacked** and select the repository's `chrome_extension` folder.
-4. Open or reload a Netflix or YouTube watch page.
-5. Open **Netflix SRT Subtitle Sync** from the Chrome toolbar and choose an SRT file.
+4. Open or reload a Netflix, Disney+, or YouTube watch page.
+5. Open **OTT SRT Subtitle Sync** from the Chrome toolbar and choose an SRT file.
 
 The popup includes timing offset, font-size, and height controls. Positive offset delays the
 subtitles and negative offset displays them earlier. The subtitle renderer and diagnostic panel
 remain inside the fullscreen player. The diagnostic panel is hidden by default and can be enabled
 from the popup for troubleshooting. Reloading the page clears the selected SRT, so choose it again
 after a reload.
+
+In Study mode, clicking the translated subtitle directly on the video toggles that cue in the saved
+study list. Repetition defaults to five but is configurable, and saved cues can be played together
+in timeline order. Watch mode makes the overlay non-interactive and hides study controls. Capture
+and cue repetition are mutually exclusive so repeated dialogue cannot pollute an extraction file.
 
 ## API
 

@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+EXTENSION = ROOT / "customer_extension"
+PORTAL = ROOT / "customer_portal"
+SCHEMA = ROOT / "supabase" / "schema.sql"
+
+
+def test_customer_manifest_has_no_capture_or_download_capabilities() -> None:
+    manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
+
+    assert "downloads" not in manifest.get("permissions", [])
+    assert "webRequest" not in manifest.get("permissions", [])
+    scripts = " ".join(
+        item
+        for content_script in manifest["content_scripts"]
+        for item in content_script.get("js", [])
+    )
+    assert "probe" not in scripts.lower()
+    assert "capture" not in scripts.lower()
+
+
+def test_customer_extension_has_no_export_or_local_subtitle_input() -> None:
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in EXTENSION.glob("*")
+        if path.suffix in {".js", ".html"}
+    ).lower()
+
+    assert "chrome.downloads" not in source
+    assert "createobjecturl" not in source
+    assert 'accept=".srt"' not in source
+    assert "capturedrow" not in source
+
+
+def test_public_clients_contain_no_privileged_supabase_key() -> None:
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for folder in (EXTENSION, PORTAL)
+        for path in folder.glob("*.js")
+    ).lower()
+
+    assert "sb_secret_" not in source
+    assert "service_role" not in source
+    assert "sb_publishable_" in source
+
+
+def test_every_exposed_table_has_rls_and_customer_grant_policy() -> None:
+    sql = SCHEMA.read_text(encoding="utf-8").lower()
+    tables = (
+        "profiles",
+        "admin_users",
+        "videos",
+        "subtitle_tracks",
+        "subtitle_grants",
+        "video_requests",
+        "error_reports",
+    )
+    for table in tables:
+        assert f"alter table public.{table} enable row level security" in sql
+
+    assert "grant_row.customer_id = (select auth.uid())" in sql
+    assert "private.can_access_subtitle(id)" in sql
+    assert "create or replace function public.can_access_subtitle" not in sql
+    assert "customer_id = (select auth.uid())" in sql
+    assert "revoke all on all tables in schema public from anon, authenticated" in sql
+
+
+def test_customer_and_admin_web_routes_exist() -> None:
+    main_source = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
+    assert '@app.get("/customer"' in main_source
+    assert '@app.get("/admin"' in main_source
+    assert (PORTAL / "index.html").exists()
+    assert (PORTAL / "admin.html").exists()

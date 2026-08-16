@@ -20,5 +20,8 @@ if (core.cleanCapturedSubtitle("...  Hello  ... world") !== "Hello world") proce
 const metadata = core.parseNetflixVideoLabel("Teach You a Lesson E4 Episode 4");
 if (metadata.title !== "Teach You a Lesson") process.exit(8);
 if (metadata.episode !== "E4 Episode 4") process.exit(9);
+const bounds = core.cuePlaybackBounds(cues[0], 1.25);
+if (bounds.start !== 2.25 || bounds.end !== 3.75) process.exit(10);
+if (core.activeSubtitleCueIndices(cues, 3.2, 0)[0] !== 1) process.exit(11);
 
 console.log("subtitle core smoke checks passed");

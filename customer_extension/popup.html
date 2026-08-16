@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Subtitle Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="brand-mark">S</div>
+    <div><h1>Subtitle Companion</h1><p>Subtitles shared especially with you</p></div>
+  </header>
+
+  <main>
+    <div id="setupNotice" class="notice" hidden>Connect your Supabase project in <code>config.js</code>.</div>
+    <section id="authCard" class="card">
+      <h2>Welcome back</h2>
+      <label>Email<input id="email" type="email" autocomplete="email"></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password"></label>
+      <button id="signIn" class="primary">Sign in</button>
+    </section>
+
+    <section id="libraryCard" class="card" hidden>
+      <div class="row spread"><div><h2>Your subtitles</h2><span id="userEmail" class="muted"></span></div><button id="signOut" class="text-button">Sign out</button></div>
+      <div class="context" id="pageContext">Open a supported video.</div>
+      <div id="trackList" class="track-list"></div>
+      <button id="refreshTracks" class="secondary">Refresh list</button>
+    </section>
+
+    <details id="viewerCard" class="card" open hidden>
+      <summary>Viewing controls</summary>
+      <div class="segmented" role="group" aria-label="Viewing mode">
+        <button id="watchMode" class="active">Watch</button><button id="studyMode">Study</button>
+      </div>
+      <label class="switch-row"><span>Show overlay subtitles</span><input id="visible" type="checkbox" checked></label>
+      <div class="grid">
+        <label>Sync offset (s)<input id="offset" type="number" min="-30" max="30" step="0.1"></label>
+        <label>Font size<input id="fontSize" type="number" min="18" max="72"></label>
+        <label>Bottom (%)<input id="bottom" type="number" min="2" max="45"></label>
+        <label>Repeat count<input id="repeatCount" type="number" min="1" max="20"></label>
+      </div>
+      <button id="playSelections" class="secondary">Play saved study lines</button>
+      <p id="viewerStatus" class="muted"></p>
+    </details>
+
+    <section class="help-card">
+      <button id="requestVideo">Request a video</button>
+      <button id="reportError">Report an issue</button>
+    </section>
+    <p id="status" class="status" aria-live="polite"></p>
+  </main>
+  <script src="config.js"></script>
+  <script src="supabase-client.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

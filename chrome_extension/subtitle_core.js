@@ -69,6 +69,21 @@
       .join("\n");
   }
 
+  function activeSubtitleCueIndices(cues, videoTime, offsetSeconds = 0) {
+    const subtitleTime = Number(videoTime) - Number(offsetSeconds || 0);
+    return cues
+      .map((cue, index) => ({ cue, index }))
+      .filter(({ cue }) => cue.start <= subtitleTime && subtitleTime < cue.end)
+      .map(({ index }) => index);
+  }
+
+  function cuePlaybackBounds(cue, offsetSeconds = 0) {
+    const offset = Number.isFinite(Number(offsetSeconds)) ? Number(offsetSeconds) : 0;
+    const start = Math.max(0, Number(cue?.start || 0) + offset);
+    const end = Math.max(start + 0.05, Number(cue?.end || 0) + offset);
+    return { start, end };
+  }
+
   function cleanCapturedSubtitle(rawText) {
     let text = String(rawText || "").replace(/\u2026/g, "...");
     text = text.replace(/\[(.*?)\]/g, (_match, inner) => {
@@ -154,6 +169,8 @@
 
   return {
     activeSubtitleText,
+    activeSubtitleCueIndices,
+    cuePlaybackBounds,
     capturedRowsToCsv,
     capturedRowsToSrt,
     clamp,

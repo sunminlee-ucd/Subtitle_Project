@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import queue
 import re
@@ -51,6 +52,19 @@ EPISODE_FILENAME_PATTERN = re.compile(
     r"(?:^|[\s._-])(?:S\d+[\s._:-]*)?E(?:PISODE)?[\s._-]*(\d+)",
     re.IGNORECASE,
 )
+DEFAULT_COST_GUARD_EUR = 1.0
+SAVED_PREFERENCE_KEYS = (
+    "output_directory",
+    "source_language",
+    "target_language",
+    "source_column",
+    "start_episode",
+    "reset_minutes",
+    "include_incomplete_final",
+    "model",
+    "review_model",
+    "max_estimated_cost",
+)
 
 
 def episode_number_from_filename(filename: str, fallback: int) -> int:
@@ -84,6 +98,56 @@ def load_private_api_key(path: Path | None = None) -> str:
             f"The private API key file does not contain a valid OpenAI key: {key_path}"
         )
     return key
+
+
+def preferences_path() -> Path:
+    local_app_data = os.getenv("LOCALAPPDATA")
+    base_directory = Path(local_app_data) if local_app_data else Path.home() / ".subtitle_project"
+    return base_directory / "SubtitleProject" / "subtitle_processor_settings.json"
+
+
+def load_preferences(path: Path | None = None) -> dict[str, object]:
+    target = path or preferences_path()
+    try:
+        loaded = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(loaded, dict):
+        return {}
+    return {key: loaded[key] for key in SAVED_PREFERENCE_KEYS if key in loaded}
+
+
+def merge_preferences(
+    defaults: dict[str, object], saved: dict[str, object]
+) -> dict[str, object]:
+    merged = defaults.copy()
+    for key, value in saved.items():
+        default = defaults.get(key)
+        if isinstance(default, bool):
+            valid = isinstance(value, bool)
+        elif isinstance(default, float):
+            valid = isinstance(value, (int, float)) and not isinstance(value, bool)
+        elif isinstance(default, int):
+            valid = isinstance(value, int) and not isinstance(value, bool)
+        else:
+            valid = isinstance(value, str)
+        if valid:
+            merged[key] = value
+    return merged
+
+
+def save_preferences(preferences: dict[str, object], path: Path | None = None) -> None:
+    target = path or preferences_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    safe_preferences = {
+        key: preferences[key] for key in SAVED_PREFERENCE_KEYS if key in preferences
+    }
+    temporary = target.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps(safe_preferences, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    temporary.replace(target)
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,20 +190,23 @@ class SubtitleProcessorApp:
         self.root.title("Subtitle Episode Splitter & Translator")
         self.root.geometry("780x720")
         self.root.minsize(700, 620)
+        defaults = self._default_preferences()
+        saved = load_preferences()
+        initial = merge_preferences(defaults, saved)
         self.input_path = tk.StringVar()
-        self.output_directory = tk.StringVar(value=str(default_output_directory()))
-        self.source_language = tk.StringVar(value="Korean")
-        self.target_language = tk.StringVar(value="Persian (Farsi)")
-        self.source_column = tk.StringVar(value="Auto")
-        self.start_episode = tk.IntVar(value=1)
-        self.reset_minutes = tk.DoubleVar(value=10.0)
-        self.include_incomplete_final = tk.BooleanVar(value=False)
-        self.api_key = tk.StringVar(value=os.getenv("OPENAI_API_KEY", ""))
-        self.model = tk.StringVar(value=os.getenv("OPENAI_MODEL", "gpt-5-mini"))
-        self.review_model = tk.StringVar(
-            value=os.getenv("OPENAI_REVIEW_MODEL", "gpt-5.6-terra")
+        self.output_directory = tk.StringVar(value=initial["output_directory"])
+        self.source_language = tk.StringVar(value=initial["source_language"])
+        self.target_language = tk.StringVar(value=initial["target_language"])
+        self.source_column = tk.StringVar(value=initial["source_column"])
+        self.start_episode = tk.IntVar(value=initial["start_episode"])
+        self.reset_minutes = tk.DoubleVar(value=initial["reset_minutes"])
+        self.include_incomplete_final = tk.BooleanVar(
+            value=initial["include_incomplete_final"]
         )
-        self.max_estimated_cost = tk.DoubleVar(value=0.25)
+        self.api_key = tk.StringVar(value=os.getenv("OPENAI_API_KEY", ""))
+        self.model = tk.StringVar(value=initial["model"])
+        self.review_model = tk.StringVar(value=initial["review_model"])
+        self.max_estimated_cost = tk.DoubleVar(value=initial["max_estimated_cost"])
         self.progress_value = tk.DoubleVar(value=0.0)
         self.progress_status = tk.StringVar(value="Ready")
         self.progress_events: queue.Queue[PipelineProgress] = queue.Queue()
@@ -149,8 +216,27 @@ class SubtitleProcessorApp:
         self.normalized_input_data = b""
         self.normalized_source_file = ""
         self.final_segment_complete = False
+        self._settings_save_job: str | None = None
         self._build()
+        for variable in self._preference_variables().values():
+            variable.trace_add("write", self._schedule_preferences_save)
+        self.root.protocol("WM_DELETE_WINDOW", self._close)
         self.root.after(100, self._drain_progress_queue)
+
+    @staticmethod
+    def _default_preferences() -> dict[str, object]:
+        return {
+            "output_directory": str(default_output_directory()),
+            "source_language": "Korean",
+            "target_language": "Persian (Farsi)",
+            "source_column": "Auto",
+            "start_episode": 1,
+            "reset_minutes": 10.0,
+            "include_incomplete_final": False,
+            "model": os.getenv("OPENAI_MODEL", "gpt-5.6-terra"),
+            "review_model": os.getenv("OPENAI_REVIEW_MODEL", "gpt-5.6-terra"),
+            "max_estimated_cost": DEFAULT_COST_GUARD_EUR,
+        }
 
     def _build(self) -> None:
         frame = ttk.Frame(self.root, padding=18)
@@ -205,13 +291,13 @@ class SubtitleProcessorApp:
         ttk.Entry(frame, textvariable=self.api_key, show="*", width=38).grid(
             row=8, column=1, sticky="ew", pady=6
         )
-        ttk.Label(frame, text="Model (cost-first default)").grid(
+        ttk.Label(frame, text="Model (context-quality default)").grid(
             row=9, column=0, sticky="w", pady=6
         )
         ttk.Combobox(
             frame,
             textvariable=self.model,
-            values=("gpt-5-mini", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6"),
+            values=("gpt-5.6-terra", "gpt-5.6-luna", "gpt-5-mini", "gpt-5.6"),
             width=28,
         ).grid(row=9, column=1, sticky="ew", pady=6)
         ttk.Label(frame, text="Escalation model (difficult cues only)").grid(
@@ -223,7 +309,7 @@ class SubtitleProcessorApp:
             values=("gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.6", "gpt-5.6-sol"),
             width=28,
         ).grid(row=10, column=1, sticky="ew", pady=6)
-        ttk.Label(frame, text="Estimated cost guard (USD)").grid(
+        ttk.Label(frame, text="Estimated cost guard (EUR, conservative)").grid(
             row=11, column=0, sticky="w", pady=6
         )
         ttk.Spinbox(
@@ -250,6 +336,9 @@ class SubtitleProcessorApp:
             command=self.translate,
         )
         self.translate_button.pack(side="left")
+        ttk.Button(actions, text="Reset to defaults", command=self.reset_to_defaults).pack(
+            side="left", padx=(8, 0)
+        )
 
         ttk.Label(frame, textvariable=self.progress_status).grid(
             row=14, column=0, columnspan=3, sticky="w", pady=(4, 4)
@@ -308,6 +397,62 @@ class SubtitleProcessorApp:
         )
         if selected:
             self.output_directory.set(selected)
+
+    def _preference_values(self) -> dict[str, object]:
+        return {
+            "output_directory": self.output_directory.get(),
+            "source_language": self.source_language.get(),
+            "target_language": self.target_language.get(),
+            "source_column": self.source_column.get(),
+            "start_episode": self.start_episode.get(),
+            "reset_minutes": self.reset_minutes.get(),
+            "include_incomplete_final": self.include_incomplete_final.get(),
+            "model": self.model.get(),
+            "review_model": self.review_model.get(),
+            "max_estimated_cost": self.max_estimated_cost.get(),
+        }
+
+    def _preference_variables(self) -> dict[str, tk.Variable]:
+        return {
+            "output_directory": self.output_directory,
+            "source_language": self.source_language,
+            "target_language": self.target_language,
+            "source_column": self.source_column,
+            "start_episode": self.start_episode,
+            "reset_minutes": self.reset_minutes,
+            "include_incomplete_final": self.include_incomplete_final,
+            "model": self.model,
+            "review_model": self.review_model,
+            "max_estimated_cost": self.max_estimated_cost,
+        }
+
+    def _schedule_preferences_save(self, *_: object) -> None:
+        if self._settings_save_job is not None:
+            self.root.after_cancel(self._settings_save_job)
+        self._settings_save_job = self.root.after(500, self._save_preferences)
+
+    def _save_preferences(self) -> None:
+        self._settings_save_job = None
+        try:
+            save_preferences(self._preference_values())
+        except (OSError, tk.TclError):
+            pass
+
+    def _close(self) -> None:
+        if self._settings_save_job is not None:
+            self.root.after_cancel(self._settings_save_job)
+            self._settings_save_job = None
+        self._save_preferences()
+        self.root.destroy()
+
+    def reset_to_defaults(self) -> None:
+        defaults = self._default_preferences()
+        for name, variable in self._preference_variables().items():
+            variable.set(defaults[name])
+        self.input_path.set("")
+        self.selected_input_paths = []
+        self._save_preferences()
+        self.progress_status.set("Settings reset to defaults and saved")
 
     def selected_source_column(self) -> str | None:
         value = self.source_column.get().strip()
@@ -452,7 +597,7 @@ class SubtitleProcessorApp:
         try:
             cost_guard = self.max_estimated_cost.get()
         except tk.TclError:
-            messagebox.showerror("Invalid cost guard", "Enter a valid positive USD amount.")
+            messagebox.showerror("Invalid cost guard", "Enter a valid positive EUR amount.")
             return
         if cost_guard <= 0:
             messagebox.showerror("Invalid cost guard", "The cost guard must be greater than zero.")
@@ -461,8 +606,9 @@ class SubtitleProcessorApp:
             messagebox.showerror(
                 "Estimated cost exceeds guard",
                 f"Estimated standard-rate cost: ${estimated_cost:.4f}\n"
-                f"Configured guard: ${cost_guard:.2f}\n\n"
-                "Reduce the input, keep gpt-5-mini selected, or deliberately raise the guard.",
+                f"Configured guard: €{cost_guard:.2f} "
+                f"(conservative offline limit: ${cost_guard:.2f})\n\n"
+                "Reduce the input, choose gpt-5.6-luna, or deliberately raise the guard.",
             )
             return
         cost_line = (
@@ -478,7 +624,9 @@ class SubtitleProcessorApp:
             f"Maximum API requests: {maximum_requests}\n"
             f"Estimated tokens: {estimated_input:,} input / {estimated_output:,} output\n"
             f"Targeted review cap: {maximum_review_cues} cues\n"
-            f"{cost_line}\n\n"
+            f"{cost_line}\n"
+            f"Cost guard: €{cost_guard:.2f} "
+            f"(conservative offline limit: ${cost_guard:.2f})\n\n"
             "This is a conservative estimate, not a billing guarantee. Eligible data-sharing "
             "credits may reduce the actual charge.",
         ):
@@ -501,6 +649,7 @@ class SubtitleProcessorApp:
             reset_threshold_seconds=self.reset_minutes.get() * 60,
             include_incomplete_final=self.include_incomplete_final.get(),
         )
+        self._save_preferences()
         self.progress_value.set(0.0)
         self.progress_status.set("Starting cost-optimized quality translation...")
         self._append_log(

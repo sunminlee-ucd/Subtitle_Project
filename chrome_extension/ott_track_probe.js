@@ -17,6 +17,26 @@
   let queuedCharacters = 0;
   let queuedCandidates = [];
   const queuedFingerprints = new Set();
+  let activeVideoKey = currentVideoKey();
+
+  function currentVideoKey() {
+    const netflixId = location.pathname.match(/\/watch\/(\d+)/)?.[1];
+    const provider = location.hostname.endsWith("disneyplus.com")
+      ? "disney"
+      : location.hostname.endsWith("netflix.com")
+        ? "netflix"
+        : "web";
+    return netflixId ? `netflix:${netflixId}` : `${provider}:${location.pathname}`;
+  }
+
+  function syncVideoContext() {
+    const nextVideoKey = currentVideoKey();
+    if (nextVideoKey === activeVideoKey) {
+      return;
+    }
+    activeVideoKey = nextVideoKey;
+    clearQueuedCandidates();
+  }
 
   function sanitizedPath(rawUrl) {
     try {
@@ -73,7 +93,11 @@
     );
   }
 
-  function publishCandidate(rawUrl, contentType, text, transport) {
+  function publishCandidate(rawUrl, contentType, text, transport, videoKey) {
+    syncVideoContext();
+    if (videoKey !== activeVideoKey) {
+      return;
+    }
     if (!active || !text || text.length > MAX_CAPTURE_CHARACTERS) {
       return;
     }
@@ -101,7 +125,7 @@
       path,
       size: text.length,
       transport,
-      videoKey: location.pathname.match(/\/watch\/(\d+)/)?.[1] || location.pathname
+      videoKey
     };
     queuedFingerprints.add(candidateFingerprint);
     queuedCandidates.push(payload);
@@ -121,27 +145,31 @@
     queuedFingerprints.clear();
   }
 
-  async function inspectFetchResponse(response, rawUrl) {
+  async function inspectFetchResponse(response, rawUrl, videoKey) {
     try {
       const contentType = response.headers.get("content-type") || "";
       const text = await response.text();
-      publishCandidate(rawUrl, contentType, text, "fetch");
+      publishCandidate(rawUrl, contentType, text, "fetch", videoKey);
     } catch (_error) {
       // A locked, opaque, or binary response is not a readable subtitle candidate.
     }
   }
 
   window.fetch = async function subtitleProbeFetch(...args) {
+    syncVideoContext();
+    const requestVideoKey = activeVideoKey;
     const response = await originalFetch.apply(this, args);
     if (active) {
       const rawUrl = response.url || args[0]?.url || args[0] || "";
-      inspectFetchResponse(response.clone(), rawUrl);
+      inspectFetchResponse(response.clone(), rawUrl, requestVideoKey);
     }
     return response;
   };
 
   XMLHttpRequest.prototype.open = function subtitleProbeOpen(method, url, ...rest) {
+    syncVideoContext();
     const rawUrl = url;
+    const requestVideoKey = activeVideoKey;
     this.addEventListener(
       "load",
       () => {
@@ -156,7 +184,13 @@
           } else if (this.responseType === "arraybuffer" && this.response) {
             text = new TextDecoder("utf-8").decode(this.response);
           }
-          publishCandidate(this.responseURL || rawUrl, contentType, text, "xhr");
+          publishCandidate(
+            this.responseURL || rawUrl,
+            contentType,
+            text,
+            "xhr",
+            requestVideoKey
+          );
         } catch (_error) {
           // Ignore unreadable response bodies without affecting Netflix playback.
         }
@@ -182,4 +216,6 @@
       replayQueuedCandidates();
     }
   });
+
+  setInterval(syncVideoContext, 500);
 })();

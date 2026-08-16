@@ -9,9 +9,16 @@
   const UPDATE_INTERVAL_MS = 100;
   const TRACK_PROBE_CONTROL_SOURCE = "subtitle-sync-extension-control";
   const TRACK_PROBE_EVENT_SOURCE = "subtitle-sync-page-probe";
+  const STUDY_SELECTIONS_KEY = "studySelectionsBySubtitle";
   const NETFLIX_CAPTION_SELECTORS = [
     '[data-uia="player-subtitle-text"]',
     ".player-timedtext-text-container"
+  ];
+  const DISNEY_CAPTION_SELECTORS = [
+    '[data-testid="subtitle-overlay"]',
+    '[data-testid="subtitle-renderer"]',
+    ".dss-subtitle-renderer-cue-window",
+    ".dss-subtitle-renderer-line"
   ];
   const MEDIA_EVENTS = [
     "play",
@@ -30,17 +37,28 @@
   let subtitleElements = null;
   let subtitleCues = [];
   let subtitleFilename = "";
+  let subtitleListId = "";
   let settings = {
     offsetSeconds: 0,
     fontSizePx: 38,
     bottomPercent: 10,
+    showSubtitles: true,
     showDiagnostics: false
   };
   let capture = emptyCaptureState();
   let trackProbeActive = true;
   let trackCandidates = [];
   const trackCandidateFingerprints = new Set();
-  let latestNetflixMetadata = { title: "", episode: "" };
+  let textTrackRowsByKey = new Map();
+  let latestVideoMetadata = { title: "", episode: "" };
+  let activeVideoKey = currentVideoKey();
+  let cueRepeat = null;
+  let lastCueRepeat = null;
+  let studyPlaylist = null;
+  let viewingMode = "watch";
+  let selectedStudyCueIndices = new Set();
+  let studySelectionRevision = 0;
+  let renderedCueIndices = [];
 
   function emptyCaptureState() {
     return {
@@ -131,10 +149,74 @@
         return { text, source: "netflix_native" };
       }
     }
+    for (const selector of DISNEY_CAPTION_SELECTORS) {
+      const text = textFromRenderedElements(selector);
+      if (text) {
+        return { text, source: "disney_native" };
+      }
+    }
+    const textTrackCaption = readActiveTextTrackCaption();
+    if (textTrackCaption) {
+      return { text: textTrackCaption, source: "browser_text_track" };
+    }
     const languageReactorText = textFromRenderedElements("#lln-subs-content");
     return languageReactorText
       ? { text: languageReactorText, source: "language_reactor" }
       : { text: "", source: "none" };
+  }
+
+  function readActiveTextTrackCaption() {
+    const video = findMainVideo();
+    if (!video?.textTracks) {
+      return "";
+    }
+    const texts = [];
+    for (const track of video.textTracks) {
+      if (track.mode === "disabled" || !track.activeCues) {
+        continue;
+      }
+      for (const cue of track.activeCues) {
+        const text = core.cleanCapturedSubtitle(cue.text || "");
+        if (text && !texts.includes(text)) {
+          texts.push(text);
+        }
+      }
+    }
+    return core.cleanCapturedSubtitle(texts.join(" "));
+  }
+
+  function currentProvider() {
+    if (location.hostname.endsWith("disneyplus.com")) {
+      return { id: "disney", label: "DisneyPlus" };
+    }
+    if (location.hostname.endsWith("netflix.com")) {
+      return { id: "netflix", label: "Netflix" };
+    }
+    return { id: "web", label: "Web" };
+  }
+
+  function currentVideoKey() {
+    const provider = currentProvider();
+    const netflixId = location.pathname.match(/\/watch\/(\d+)/)?.[1];
+    return netflixId
+      ? `netflix:${netflixId}`
+      : `${provider.id}:${location.pathname}`;
+  }
+
+  function syncVideoContext() {
+    const nextVideoKey = currentVideoKey();
+    if (nextVideoKey === activeVideoKey) {
+      return false;
+    }
+    activeVideoKey = nextVideoKey;
+    trackCandidates = [];
+    trackCandidateFingerprints.clear();
+    textTrackRowsByKey = new Map();
+    latestVideoMetadata = { title: "", episode: "" };
+    cueRepeat = null;
+    lastCueRepeat = null;
+    studyPlaylist = null;
+    return true;
   }
 
   function scoreVideo(video) {
@@ -305,11 +387,34 @@
         unicode-bidi: plaintext;
         text-shadow: 0 2px 4px #000, 0 0 2px #000;
       }
+      .subtitle.study {
+        cursor: pointer;
+        pointer-events: auto;
+        border: 2px solid rgba(185, 255, 90, 0.45);
+      }
+      .subtitle.study:hover { border-color: #b9ff5a; }
+      .subtitle.selected {
+        border-color: #b9ff5a;
+        background: rgba(20, 45, 10, 0.82);
+        box-shadow: 0 0 0 2px rgba(185, 255, 90, 0.22);
+      }
     `;
     const subtitle = document.createElement("div");
     subtitle.className = "subtitle";
     subtitle.setAttribute("role", "status");
     subtitle.setAttribute("aria-live", "off");
+    subtitle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleRenderedStudyCues();
+    });
+    subtitle.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleRenderedStudyCues();
+      }
+    });
     shadow.append(style, subtitle);
     activeSurface().append(host);
     subtitleElements = { host, subtitle };
@@ -360,18 +465,102 @@
   function renderSubtitle(state) {
     ensureSubtitlePlacement();
     const { host, subtitle } = subtitleElements;
+    if (!settings.showSubtitles) {
+      host.style.setProperty("display", "none", "important");
+      renderedCueIndices = [];
+      return;
+    }
+    host.style.setProperty("display", "block", "important");
     host.style.setProperty("bottom", `${settings.bottomPercent}vh`, "important");
     subtitle.style.fontSize = `${settings.fontSizePx}px`;
-    const text = state.detected
-      ? core.activeSubtitleText(subtitleCues, state.currentTime, settings.offsetSeconds)
-      : "";
+    renderedCueIndices = state.detected
+      ? core.activeSubtitleCueIndices(subtitleCues, state.currentTime, settings.offsetSeconds)
+      : [];
+    const text = renderedCueIndices.map((index) => subtitleCues[index]?.text || "").join("\n");
     if (!text) {
       subtitle.style.display = "none";
       subtitle.textContent = "";
+      subtitle.classList.remove("study", "selected");
+      subtitle.removeAttribute("tabindex");
       return;
     }
     subtitle.textContent = text;
     subtitle.style.display = "inline-block";
+    const studyEnabled = viewingMode === "study";
+    const selected = renderedCueIndices.length > 0
+      && renderedCueIndices.every((index) => selectedStudyCueIndices.has(index));
+    subtitle.classList.toggle("study", studyEnabled);
+    subtitle.classList.toggle("selected", studyEnabled && selected);
+    subtitle.setAttribute("role", studyEnabled ? "button" : "status");
+    subtitle.title = studyEnabled
+      ? selected ? "Remove from study list" : "Save to study list"
+      : "";
+    if (studyEnabled) {
+      subtitle.setAttribute("tabindex", "0");
+    } else {
+      subtitle.removeAttribute("tabindex");
+    }
+  }
+
+  async function saveStudySelection() {
+    if (!subtitleListId) {
+      return;
+    }
+    const stored = await chrome.storage.local.get({ [STUDY_SELECTIONS_KEY]: {} });
+    const selections = stored[STUDY_SELECTIONS_KEY] || {};
+    selections[subtitleListId] = {
+      cueIndices: [...selectedStudyCueIndices].sort((left, right) => left - right),
+      updatedAt: Date.now()
+    };
+    const retained = Object.fromEntries(
+      Object.entries(selections)
+        .sort((left, right) => Number(right[1]?.updatedAt || 0) - Number(left[1]?.updatedAt || 0))
+        .slice(0, 20)
+    );
+    await chrome.storage.local.set({ [STUDY_SELECTIONS_KEY]: retained });
+  }
+
+  async function restoreStudySelection() {
+    selectedStudyCueIndices = new Set();
+    if (subtitleListId) {
+      const stored = await chrome.storage.local.get({ [STUDY_SELECTIONS_KEY]: {} });
+      const saved = stored[STUDY_SELECTIONS_KEY]?.[subtitleListId];
+      for (const rawIndex of saved?.cueIndices || []) {
+        const index = Number(rawIndex);
+        if (Number.isInteger(index) && subtitleCues[index]) {
+          selectedStudyCueIndices.add(index);
+        }
+      }
+    }
+    studySelectionRevision += 1;
+  }
+
+  async function replaceStudySelection(rawIndices) {
+    selectedStudyCueIndices = new Set(
+      rawIndices
+        .map(Number)
+        .filter((index) => Number.isInteger(index) && subtitleCues[index])
+    );
+    studySelectionRevision += 1;
+    await saveStudySelection();
+    renderSubtitle(latestState);
+  }
+
+  function toggleRenderedStudyCues() {
+    if (viewingMode !== "study" || !renderedCueIndices.length || !subtitleListId) {
+      return;
+    }
+    const remove = renderedCueIndices.every((index) => selectedStudyCueIndices.has(index));
+    for (const index of renderedCueIndices) {
+      if (remove) {
+        selectedStudyCueIndices.delete(index);
+      } else {
+        selectedStudyCueIndices.add(index);
+      }
+    }
+    studySelectionRevision += 1;
+    renderSubtitle(latestState);
+    saveStudySelection().catch(() => {});
   }
 
   function closeCapturedCue(endSeconds) {
@@ -447,7 +636,10 @@
   function startCapture(playbackRate) {
     const video = findMainVideo();
     if (!video) {
-      throw new Error("No visible Netflix video was found.");
+      throw new Error("No visible Netflix, Disney+, or YouTube video was found.");
+    }
+    if (cueRepeat) {
+      throw new Error("Stop subtitle repetition before starting capture.");
     }
     capture = emptyCaptureState();
     capture.active = true;
@@ -470,7 +662,7 @@
     const rows = capturedRowsSnapshot();
     if (!rows.length) {
       throw new Error(
-        "No subtitles were captured. Enable a Netflix subtitle track and play the video first."
+        "No subtitles were captured. Enable an OTT subtitle track and play the video first."
       );
     }
     const extension = format === "srt" ? "srt" : "csv";
@@ -485,8 +677,11 @@
   }
 
   function samplePlaybackState() {
+    syncVideoContext();
     const video = findMainVideo();
+    updateCueRepeat(video);
     latestState = video ? stateFromVideo(video) : noVideoState();
+    scanSelectedTextTrack(video);
     updateCapture(video);
     renderProbe(latestState);
     renderSubtitle(latestState);
@@ -497,18 +692,157 @@
     return {
       ...latestState,
       subtitleFilename,
+      subtitleListId,
       subtitleCueCount: subtitleCues.length,
       subtitleSettings: { ...settings },
       captureActive: capture.active,
       capturedCueCount: capture.rows.length + (capture.current ? 1 : 0),
       captureSource: capture.source,
       captureSegmentCount: capture.segmentCount,
+      cueRepeatStatus: cueRepeat
+        ? { active: true, ...cueRepeat }
+        : lastCueRepeat,
+      studyPlaylistStatus: studyPlaylist
+        ? {
+            active: true,
+            position: studyPlaylist.position,
+            total: studyPlaylist.cueIndices.length
+          }
+        : null,
+      viewingMode,
+      selectedStudyCueCount: selectedStudyCueIndices.size,
+      studySelectionRevision,
       trackProbeActive,
       trackCandidates: trackCandidates.map(({ content: _content, ...summary }) => summary)
     };
   }
 
+  function subtitleCueSummaries() {
+    return subtitleCues.map((cue, index) => ({
+      index,
+      start: cue.start,
+      end: cue.end,
+      text: String(cue.text || "").slice(0, 500)
+    }));
+  }
+
+  function startCueRepeat(cueIndex, repeatCount = 5, { fromPlaylist = false } = {}) {
+    if (viewingMode !== "study") {
+      throw new Error("Switch to Study mode before repeating subtitles.");
+    }
+    if (capture.active) {
+      throw new Error("Stop subtitle capture before repeating a cue.");
+    }
+    const cue = subtitleCues[Number(cueIndex)];
+    if (!cue) {
+      throw new Error("The selected subtitle cue is no longer available.");
+    }
+    const video = findMainVideo();
+    if (!video) {
+      throw new Error("No visible video was found.");
+    }
+    const bounds = core.cuePlaybackBounds(cue, settings.offsetSeconds);
+    const end = Number.isFinite(video.duration)
+      ? Math.min(bounds.end, video.duration)
+      : bounds.end;
+    if (end <= bounds.start) {
+      throw new Error("This subtitle ends outside the playable video range.");
+    }
+    cueRepeat = {
+      cueIndex: Number(cueIndex),
+      completed: 0,
+      total: Math.round(core.clamp(Number(repeatCount), 1, 20)),
+      start: bounds.start,
+      end
+    };
+    if (!fromPlaylist) {
+      studyPlaylist = null;
+    }
+    lastCueRepeat = null;
+    video.currentTime = cueRepeat.start;
+    const startedRepeat = cueRepeat;
+    video.play().catch(() => {
+      if (cueRepeat === startedRepeat) {
+        cueRepeat = null;
+        lastCueRepeat = null;
+      }
+    });
+  }
+
+  function stopCueRepeat({ pause = true } = {}) {
+    const video = findMainVideo();
+    if (pause && video) {
+      video.pause();
+    }
+    if (cueRepeat) {
+      lastCueRepeat = { active: false, stopped: true, ...cueRepeat };
+      cueRepeat = null;
+    }
+    studyPlaylist = null;
+  }
+
+  function startStudyPlaylist(rawCueIndices, repeatCount = 5) {
+    if (viewingMode !== "study") {
+      throw new Error("Switch to Study mode before playing selected subtitles.");
+    }
+    if (capture.active) {
+      throw new Error("Stop subtitle capture before starting a study playlist.");
+    }
+    const cueIndices = [...new Set(rawCueIndices.map(Number))]
+      .filter((index) => Number.isInteger(index) && subtitleCues[index])
+      .sort((left, right) => subtitleCues[left].start - subtitleCues[right].start);
+    if (!cueIndices.length) {
+      throw new Error("Select at least one subtitle for the study playlist.");
+    }
+    studyPlaylist = {
+      cueIndices,
+      position: 0,
+      repeatCount: Math.round(core.clamp(Number(repeatCount), 1, 20))
+    };
+    startCueRepeat(cueIndices[0], studyPlaylist.repeatCount, { fromPlaylist: true });
+  }
+
+  function updateCueRepeat(video) {
+    if (!cueRepeat || !video) {
+      return;
+    }
+    if (finiteNumber(video.currentTime) < cueRepeat.end) {
+      return;
+    }
+    cueRepeat.completed += 1;
+    if (cueRepeat.completed >= cueRepeat.total) {
+      const completedRepeat = { active: false, stopped: false, ...cueRepeat };
+      cueRepeat = null;
+      if (studyPlaylist) {
+        studyPlaylist.position += 1;
+        if (studyPlaylist.position < studyPlaylist.cueIndices.length) {
+          const nextCueIndex = studyPlaylist.cueIndices[studyPlaylist.position];
+          startCueRepeat(nextCueIndex, studyPlaylist.repeatCount, { fromPlaylist: true });
+          return;
+        }
+        video.pause();
+        video.currentTime = completedRepeat.end;
+        lastCueRepeat = { ...completedRepeat, playlistComplete: true };
+        studyPlaylist = null;
+        return;
+      }
+      lastCueRepeat = { ...completedRepeat, continuedPlayback: true };
+      video.play().catch(() => {});
+      return;
+    }
+    video.currentTime = cueRepeat.start;
+    const continuingRepeat = cueRepeat;
+    video.play().catch(() => {
+      if (cueRepeat === continuingRepeat) {
+        stopCueRepeat({ pause: false });
+      }
+    });
+  }
+
   function estimateTimedTextCues(content, format) {
+    if (format === "srt") {
+      return (String(content).match(/-->/g) || []).length;
+    }
     if (format === "webvtt") {
       return (String(content).match(/-->/g) || []).length;
     }
@@ -560,14 +894,16 @@
     };
   }
 
-  function netflixVideoMetadata() {
+  function ottVideoMetadata() {
+    syncVideoContext();
+    const provider = currentProvider();
     const documentTitle = document.title
-      .replace(/\s*[-|]\s*Netflix\s*$/i, "")
-      .replace(/^Netflix\s*[-|]\s*/i, "")
+      .replace(/\s*[-|]\s*(?:Netflix|Disney\+)\s*$/i, "")
+      .replace(/^(?:Netflix|Disney\+)\s*[-|]\s*/i, "")
       .trim();
     const elements = [
       ...document.querySelectorAll(
-        '[data-uia="video-title"], [data-uia*="title"], .watch-video--title-text, [class*="title"], h1, h2, h3, h4'
+        '[data-uia="video-title"], [data-uia*="title"], [data-testid="title"], [data-testid*="title"], .watch-video--title-text, [class*="title"], h1, h2, h3, h4'
       )
     ].slice(0, 500);
     let best = { title: "", episode: "", score: -1 };
@@ -585,17 +921,20 @@
       }
     }
     if (best.episode) {
-      latestNetflixMetadata = {
+      latestVideoMetadata = {
         title: best.title || filenamePart(documentTitle),
         episode: best.episode
       };
     }
-    const videoId = location.pathname.match(/\/watch\/(\d+)/)?.[1] || "video";
+    const videoId = location.pathname.match(/\/watch\/(\d+)/)?.[1]
+      || location.pathname.split("/").filter(Boolean).at(-1)
+      || "video";
     return {
-      episode: latestNetflixMetadata.episode,
+      provider,
+      episode: latestVideoMetadata.episode,
       title: filenamePart(
-        latestNetflixMetadata.title || documentTitle,
-        `Netflix_${videoId}`
+        latestVideoMetadata.title || documentTitle,
+        `${provider.label}_${videoId}`
       )
     };
   }
@@ -611,14 +950,16 @@
     if (!trackProbeActive || !payload?.content || !payload?.fingerprint) {
       return;
     }
+    syncVideoContext();
+    const videoKey = String(payload.videoKey || currentVideoKey());
+    if (videoKey !== activeVideoKey) {
+      return;
+    }
     if (trackCandidateFingerprints.has(payload.fingerprint)) {
       return;
     }
     const format = String(payload.format || "unknown");
-    const videoMetadata = netflixVideoMetadata();
-    const videoKey = String(
-      payload.videoKey || location.pathname.match(/\/watch\/(\d+)/)?.[1] || location.pathname
-    );
+    const videoMetadata = ottVideoMetadata();
     const cueEstimate = estimateTimedTextCues(payload.content, format);
     const nextCandidate = {
       content: String(payload.content),
@@ -632,10 +973,12 @@
       videoKey,
       videoTitle: videoMetadata.title,
       episodeTitle: videoMetadata.episode,
-      language: timedTextLanguage(payload.content)
+      language: filenamePart(payload.language || timedTextLanguage(payload.content))
     };
     const existingIndex = trackCandidates.findIndex(
-      (candidate) => candidate.videoKey === videoKey
+      (candidate) =>
+        candidate.videoKey === videoKey &&
+        (candidate.language || "unknown") === (nextCandidate.language || "unknown")
     );
     if (existingIndex >= 0) {
       if (cueEstimate < trackCandidates[existingIndex].cueEstimate) {
@@ -659,6 +1002,52 @@
     trackCandidates.push(nextCandidate);
   }
 
+  function scanSelectedTextTrack(video) {
+    if (!trackProbeActive || !video?.textTracks) {
+      return;
+    }
+    for (let trackIndex = 0; trackIndex < video.textTracks.length; trackIndex += 1) {
+      const track = video.textTracks[trackIndex];
+      const cues = track.mode === "showing" ? Array.from(track.cues || []) : [];
+      if (!cues.length) {
+        continue;
+      }
+      const rows = cues
+        .map((cue) => ({
+          start: Number(cue.startTime),
+          end: Number(cue.endTime),
+          text: core.cleanCapturedSubtitle(String(cue.text || "").replace(/<[^>]*>/g, ""))
+        }))
+        .filter((cue) => cue.text && Number.isFinite(cue.start) && cue.end > cue.start);
+      if (!rows.length) {
+        continue;
+      }
+      const trackKey = `${activeVideoKey}:${trackIndex}:${track.language || track.label || ""}`;
+      const accumulated = textTrackRowsByKey.get(trackKey) || new Map();
+      for (const row of rows) {
+        accumulated.set(`${row.start}:${row.end}:${row.text}`, row);
+      }
+      textTrackRowsByKey.set(trackKey, accumulated);
+      const accumulatedRows = [...accumulated.values()].sort(
+        (left, right) => left.start - right.start || left.end - right.end
+      );
+      const content = core.capturedRowsToSrt(accumulatedRows);
+      const first = accumulatedRows[0];
+      const last = accumulatedRows.at(-1);
+      addTrackCandidate({
+        content,
+        contentType: "application/x-subrip",
+        fingerprint: `text-track-${activeVideoKey}-${trackIndex}-${accumulatedRows.length}-${first.start}-${last.end}`,
+        format: "srt",
+        path: "browser-text-track",
+        size: content.length,
+        transport: "text-track",
+        videoKey: activeVideoKey,
+        language: String(track.language || track.label || "")
+      });
+    }
+  }
+
   function exportTrackCandidate(index) {
     const candidate = trackCandidates[Number(index)];
     if (!candidate) {
@@ -666,16 +1055,17 @@
     }
     const extensions = {
       webvtt: "vtt",
+      srt: "srt",
       ttml: "ttml",
       xml_timed_text: "xml",
       json_candidate: "json",
       unknown: "txt"
     };
     const extension = extensions[candidate.format] || "txt";
-    const currentMetadata = netflixVideoMetadata();
+    const currentMetadata = ottVideoMetadata();
     const candidateTitle = String(candidate.videoTitle || "");
     const filename = [
-      candidateTitle.startsWith("Netflix_") ? currentMetadata.title : candidateTitle,
+      /^(?:Netflix|DisneyPlus)_/.test(candidateTitle) ? currentMetadata.title : candidateTitle,
       candidate.episodeTitle || currentMetadata.episode,
       candidate.language
     ]
@@ -684,7 +1074,7 @@
       .join(" - ");
     return {
       content: candidate.content,
-      filename: `${filename || `Netflix_subtitles_${index + 1}`}.${extension}`,
+      filename: `${filename || `${currentMetadata.provider.label}_subtitles_${index + 1}`}.${extension}`,
       mimeType: candidate.contentType || "text/plain"
     };
   }
@@ -706,6 +1096,7 @@
         3,
         45
       ),
+      showSubtitles: Boolean(nextSettings?.showSubtitles ?? settings.showSubtitles),
       showDiagnostics: Boolean(nextSettings?.showDiagnostics ?? settings.showDiagnostics)
     };
   }
@@ -727,10 +1118,66 @@
         return;
       }
       if (message?.type === "LOAD_SRT") {
+        stopCueRepeat({ pause: false });
         subtitleCues = core.parseSrt(String(message.content || ""));
         subtitleFilename = String(message.filename || "subtitles.srt");
+        subtitleListId = String(message.subtitleListId || "");
+        lastCueRepeat = null;
+        restoreStudySelection()
+          .then(() => sendResponse({ ok: true, ...samplePlaybackState() }))
+          .catch((error) => sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          }));
+        return true;
+      }
+      if (message?.type === "GET_SUBTITLE_CUES") {
+        sendResponse({
+          ok: true,
+          subtitleFilename,
+          subtitleListId,
+          selectedCueIndices: [...selectedStudyCueIndices],
+          cues: subtitleCueSummaries()
+        });
+        return;
+      }
+      if (message?.type === "REPEAT_SUBTITLE_CUE") {
+        startCueRepeat(message.cueIndex, message.repeatCount);
         sendResponse({ ok: true, ...samplePlaybackState() });
         return;
+      }
+      if (message?.type === "STOP_SUBTITLE_REPEAT") {
+        stopCueRepeat();
+        sendResponse({ ok: true, ...samplePlaybackState() });
+        return;
+      }
+      if (message?.type === "PLAY_STUDY_PLAYLIST") {
+        startStudyPlaylist(
+          Array.isArray(message.cueIndices) ? message.cueIndices : [],
+          message.repeatCount
+        );
+        sendResponse({ ok: true, ...samplePlaybackState() });
+        return;
+      }
+      if (message?.type === "SET_VIEWING_MODE") {
+        const nextMode = message.mode === "study" ? "study" : "watch";
+        if (nextMode === "watch" && (cueRepeat || studyPlaylist)) {
+          stopCueRepeat({ pause: false });
+        }
+        viewingMode = nextMode;
+        sendResponse({ ok: true, ...samplePlaybackState() });
+        return;
+      }
+      if (message?.type === "SET_STUDY_SELECTIONS") {
+        replaceStudySelection(
+          Array.isArray(message.cueIndices) ? message.cueIndices : []
+        )
+          .then(() => sendResponse({ ok: true, ...samplePlaybackState() }))
+          .catch((error) => sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          }));
+        return true;
       }
       if (message?.type === "SET_SUBTITLE_SETTINGS") {
         updateSettings(message.settings);
@@ -738,8 +1185,13 @@
         return;
       }
       if (message?.type === "CLEAR_SUBTITLES") {
+        stopCueRepeat({ pause: false });
         subtitleCues = [];
         subtitleFilename = "";
+        subtitleListId = "";
+        selectedStudyCueIndices = new Set();
+        studySelectionRevision += 1;
+        lastCueRepeat = null;
         sendResponse({ ok: true, ...samplePlaybackState() });
         return;
       }
@@ -803,7 +1255,7 @@
   document.addEventListener("visibilitychange", samplePlaybackState, { passive: true });
   document.addEventListener("fullscreenchange", samplePlaybackState, { passive: true });
   setTrackProbeActive(true, { replayCandidates: true });
-  setInterval(netflixVideoMetadata, 500);
+  setInterval(ottVideoMetadata, 500);
   setInterval(samplePlaybackState, UPDATE_INTERVAL_MS);
   samplePlaybackState();
 })();

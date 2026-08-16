@@ -10,7 +10,13 @@ from app.episode_pipeline import (
 )
 from app.translator import EchoTranslator
 from app.ttml import parse_ttml
-from desktop.subtitle_processor import episode_number_from_filename
+from desktop.subtitle_processor import (
+    DEFAULT_COST_GUARD_EUR,
+    episode_number_from_filename,
+    load_preferences,
+    merge_preferences,
+    save_preferences,
+)
 
 NETFLIX_TTML = b"""<?xml version="1.0" encoding="utf-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml"
@@ -56,6 +62,40 @@ def test_full_ttml_track_marks_final_episode_complete() -> None:
 def test_episode_number_is_read_from_download_filename() -> None:
     assert episode_number_from_filename("Teach You a Lesson - E4 Episode 4 - ko.ttml", 1) == 4
     assert episode_number_from_filename("Movie Title - ko.ttml", 7) == 7
+
+
+def test_desktop_preferences_round_trip_without_secrets(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    save_preferences(
+        {
+            "target_language": "Persian (Farsi)",
+            "max_estimated_cost": DEFAULT_COST_GUARD_EUR,
+            "api_key": "must-not-be-saved",
+        },
+        path,
+    )
+
+    assert load_preferences(path) == {
+        "target_language": "Persian (Farsi)",
+        "max_estimated_cost": 1.0,
+    }
+    assert "must-not-be-saved" not in path.read_text(encoding="utf-8")
+
+
+def test_invalid_desktop_preferences_are_ignored(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    path.write_text("not-json", encoding="utf-8")
+
+    assert load_preferences(path) == {}
+
+
+def test_invalid_saved_preference_types_fall_back_to_defaults() -> None:
+    defaults = {"start_episode": 1, "reset_minutes": 10.0, "model": "terra"}
+
+    assert merge_preferences(
+        defaults,
+        {"start_episode": "bad", "reset_minutes": False, "model": ["bad"]},
+    ) == defaults
 
 
 @pytest.mark.asyncio

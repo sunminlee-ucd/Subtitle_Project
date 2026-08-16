@@ -1,18 +1,30 @@
+.gcloudignore
 .git
 .github
 .venv
+.venv-overlay
 __pycache__
 .pytest_cache
+.ruff_cache
+*.py[cod]
+*.egg-info
 .env
 .env.*
 !.env.example
 API key for openAI.txt
 API key for open AI/
 SubtitleProject_openai_secretkey.txt
-tests
 input
 output
 artifacts
 build
 dist
+dist_*
 *.spec
+*.exe
+tests
+chrome_extension
+customer_extension
+desktop
+scripts
+supabase

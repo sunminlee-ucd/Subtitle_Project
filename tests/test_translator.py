@@ -4,6 +4,8 @@ import pytest
 
 from app.srt import SubtitleCue
 from app.translator import (
+    ContextCharacter,
+    CueIdMismatchError,
     DraftTranslationOutput,
     DraftTranslationRow,
     EpisodeContextOutput,
@@ -13,7 +15,9 @@ from app.translator import (
     ReviewTranslationRow,
     TranslationError,
     _build_quality_issues,
+    _ordered_rows_for_cues,
     _parse_translation_response,
+    _select_review_candidates,
     create_batches,
     estimate_translation_cost,
     sample_cues_for_context,
@@ -170,6 +174,85 @@ async def test_quality_pipeline_retries_difficult_cue_and_reviews(monkeypatch) -
         "difficult_cues",
         "difficult_cues",
     ]
+
+
+@pytest.mark.asyncio
+async def test_empty_difficult_review_retains_safe_first_pass_draft(monkeypatch) -> None:
+    translator = OpenAITranslator(
+        api_key="sk-test-placeholder",
+        model="gpt-5-mini",
+        review_model="gpt-5.6-terra",
+        batch_character_limit=1000,
+    )
+    cue = SubtitleCue(
+        identifier="1",
+        timing="00:00:00,000 --> 00:00:01,000",
+        text="날 지켜줄 거지?",
+    )
+
+    async def analyze(*_args):
+        return EpisodeContextOutput(
+            summary="A direct conversation.",
+            overall_tone="vulnerable",
+            register_and_formality="informal",
+            cultural_notes=[],
+            characters=[],
+            terminology=[],
+            consistency_rules=[],
+        )
+
+    async def draft(*_args):
+        return DraftTranslationOutput(
+            translations=[
+                DraftTranslationRow(
+                    id="1",
+                    text="از من محافظت می‌کنی؟",
+                    confidence="high",
+                    needs_attention=False,
+                    difficulty_reason="",
+                )
+            ]
+        )
+
+    async def empty_retry(*_args):
+        return RetryTranslationOutput(
+            translations=[
+                RetryTranslationRow(
+                    id="1",
+                    text="   ",
+                    confidence="low",
+                    interpretation="",
+                    resolution="",
+                )
+            ]
+        )
+
+    monkeypatch.setattr(translator, "_analyze_context", analyze)
+    monkeypatch.setattr(translator, "_translate_batch", draft)
+    monkeypatch.setattr(translator, "_retry_difficult", empty_retry)
+
+    result = await translator.translate_episode([cue], "Persian (Farsi)", "Korean")
+
+    assert result.texts == ("از من محافظت می‌کنی؟",)
+    assert "safe first-pass drafts were retained" in result.warnings[0]
+
+
+def test_empty_first_pass_row_is_rejected_for_targeted_recovery() -> None:
+    cue = SubtitleCue(
+        identifier="17",
+        timing="00:00:00,000 --> 00:00:01,000",
+        text="source",
+    )
+    row = DraftTranslationRow(
+        id="17",
+        text="",
+        confidence="high",
+        needs_attention=False,
+        difficulty_reason="",
+    )
+
+    with pytest.raises(CueIdMismatchError, match="empty translated text"):
+        _ordered_rows_for_cues([cue], [row])
 
 
 @pytest.mark.asyncio
@@ -537,6 +620,147 @@ async def test_difficult_cue_request_uses_escalation_model(monkeypatch) -> None:
     )
 
     assert captured["model"] == "gpt-5.6-terra"
+    assert captured["reasoning_effort"] == "medium"
+    assert captured["payload"]["difficult_subtitles"][0]["nearby_dialogue"] == [
+        {"id": "1", "text": "ambiguous source", "position": "target"}
+    ]
+    assert "first/second/third-person substitution" in captured["instructions"]
+    assert "phonetically rendered" in captured["instructions"]
+    assert "Do not infer gender" in captured["instructions"]
+
+
+@pytest.mark.asyncio
+async def test_draft_prompt_protects_person_reference_and_transliterates_names(
+    monkeypatch,
+) -> None:
+    translator = OpenAITranslator(
+        api_key="sk-test-placeholder",
+        model="gpt-5-mini",
+        batch_character_limit=1000,
+    )
+    cue = SubtitleCue(
+        identifier="1",
+        timing="00:00:00,000 --> 00:00:01,000",
+        text="날 지켜줄 거지, 민준아?",
+    )
+    context = EpisodeContextOutput(
+        summary="A direct conversation.",
+        overall_tone="vulnerable",
+        register_and_formality="informal",
+        cultural_notes=[],
+        characters=[
+            ContextCharacter(
+                name="민준",
+                target_name="مین‌جون",
+                gender_reference="unknown",
+                role="addressee",
+                speech_style="informal",
+                relationships="The speaker asks Min-jun for protection.",
+            )
+        ],
+        terminology=[],
+        consistency_rules=[],
+    )
+    captured = {}
+
+    async def request_structured(**kwargs):
+        captured.update(kwargs)
+        return DraftTranslationOutput(
+            translations=[
+                DraftTranslationRow(
+                    id="1",
+                    text="از من محافظت می‌کنی، مین‌جون؟",
+                    confidence="high",
+                    needs_attention=False,
+                    difficulty_reason="",
+                )
+            ]
+        )
+
+    monkeypatch.setattr(translator, "_request_structured", request_structured)
+
+    await translator._translate_batch([cue], "Persian (Farsi)", "Korean", context)
+
+    assert "Will you protect me?" in captured["instructions"]
+    assert "Will you protect her?" in captured["instructions"]
+    assert "first person means the speaker" in captured["instructions"]
+    assert "target language's script" in captured["instructions"]
+    assert "Never infer gender" in captured["instructions"]
+    assert captured["payload"]["episode_context"]["characters"][0]["target_name"] == "مین‌جون"
+    assert (
+        captured["payload"]["episode_context"]["characters"][0]["gender_reference"]
+        == "unknown"
+    )
+
+
+def test_missing_target_script_name_is_prioritized_for_review() -> None:
+    cue = SubtitleCue(
+        identifier="1",
+        timing="00:00:00,000 --> 00:00:01,000",
+        text="민준아, 기다려.",
+    )
+    drafts = {
+        "1": DraftTranslationRow(
+            id="1",
+            text="صبر کن.",
+            confidence="high",
+            needs_attention=False,
+            difficulty_reason="",
+        )
+    }
+    context = EpisodeContextOutput(
+        summary="Context",
+        overall_tone="urgent",
+        register_and_formality="informal",
+        cultural_notes=[],
+        characters=[
+            ContextCharacter(
+                name="민준",
+                target_name="مین‌جون",
+                gender_reference="unknown",
+                role="character",
+                speech_style="informal",
+                relationships="",
+            )
+        ],
+        terminology=[],
+        consistency_rules=[],
+    )
+
+    selected, deferred = _select_review_candidates(
+        [cue], drafts, context=context, max_review_fraction=0.15
+    )
+
+    assert deferred == 0
+    assert selected[0].id == "1"
+    assert selected[0].needs_attention is True
+    assert "proper name" in selected[0].difficulty_reason
+
+
+def test_korean_person_reference_is_reviewed_even_when_draft_is_confident() -> None:
+    cue = SubtitleCue(
+        identifier="1",
+        timing="00:00:00,000 --> 00:00:01,000",
+        text="날 지켜줄 거지?",
+    )
+    drafts = {
+        "1": DraftTranslationRow(
+            id="1",
+            text="آیا از او محافظت می‌کنی؟",
+            confidence="high",
+            needs_attention=False,
+            difficulty_reason="",
+        )
+    }
+
+    selected, deferred = _select_review_candidates(
+        [cue], drafts, max_review_fraction=0.15
+    )
+
+    assert deferred == 0
+    assert selected[0].id == "1"
+    assert selected[0].needs_attention is True
+    assert "person-role review" in selected[0].difficulty_reason
 
 
 def test_cost_estimate_caps_targeted_review_and_uses_split_pricing() -> None:

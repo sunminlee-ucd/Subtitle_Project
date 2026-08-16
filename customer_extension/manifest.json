@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Subtitle Companion",
+  "version": "0.1.0",
+  "description": "Watch authorized translated subtitles in sync on supported streaming sites.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://*.netflix.com/*",
+    "https://*.disneyplus.com/*",
+    "https://*.youtube.com/*",
+    "https://*.supabase.co/*"
+  ],
+  "action": {
+    "default_title": "Subtitle Companion",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.disneyplus.com/*",
+        "https://*.youtube.com/*"
+      ],
+      "js": ["subtitle-core.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

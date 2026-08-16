@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Subtitle Companion Support</title><link rel="stylesheet" href="/portal-assets/styles.css"></head>
+<body>
+  <header><div class="brand"><div class="logo">S</div><div><h1>Subtitle Companion</h1><div>Friendly support for your viewing experience</div></div></div></header>
+  <main>
+    <p id="setupNotice" class="notice" hidden>Configure the Supabase URL and publishable key in <code>customer_portal/config.js</code>.</p>
+    <section id="auth" class="card auth">
+      <h2>Customer sign in</h2><p class="muted">Sign in to request a title or report a subtitle issue.</p>
+      <label>Display name<input id="displayName" autocomplete="name"></label>
+      <label>Email<input id="email" type="email" autocomplete="email"></label>
+      <label>Password<input id="password" type="password" minlength="8" autocomplete="current-password"></label>
+      <div class="row"><button id="signIn">Sign in</button><button id="signUp" class="secondary">Create account</button></div>
+      <p id="authStatus" class="status"></p>
+    </section>
+    <section id="workspace" hidden>
+      <div class="card row spread"><div><strong id="userEmail"></strong><div class="muted">Only subtitles shared with this account are visible.</div></div><button id="signOut" class="quiet">Sign out</button></div>
+      <nav class="tabs"><button data-view="request">Request a video</button><button data-view="report">Report an issue</button><button data-view="history">My history</button></nav>
+      <section id="requestView" class="card view">
+        <h2>Request a video</h2><p class="muted">Send the exact streaming link and language you need.</p>
+        <form id="requestForm"><div class="grid">
+          <label>Streaming service<select id="requestProvider"><option value="netflix">Netflix</option><option value="disney">Disney+</option><option value="youtube">YouTube</option><option value="other">Other</option></select></label>
+          <label>Requested subtitle language<input id="requestLanguage" required placeholder="e.g. Persian"></label>
+        </div><label>Video link<input id="requestUrl" type="url" required></label><label>Notes<textarea id="requestNotes" placeholder="Season, episode, or anything that helps us identify it"></textarea></label><button type="submit">Send request</button></form>
+      </section>
+      <section id="reportView" class="card view" hidden>
+        <h2>Report a subtitle issue</h2><p class="muted">Timing and translation details help us fix it quickly.</p>
+        <form id="reportForm"><div class="grid">
+          <label>Authorized subtitle<select id="reportTrack"><option value="">Not sure / general issue</option></select></label>
+          <label>Issue type<select id="reportCategory"><option value="timing">Timing</option><option value="translation">Translation</option><option value="missing">Missing line</option><option value="display">Display</option><option value="other">Other</option></select></label>
+        </div><div class="grid"><label>Video link<input id="reportUrl" type="url" required></label><label>Approximate time in seconds<input id="reportTime" type="number" min="0" step="0.001"></label></div><label>What happened?<textarea id="reportMessage" required></textarea></label><button type="submit">Send report</button></form>
+      </section>
+      <section id="historyView" class="card view" hidden><h2>My requests and reports</h2><div id="history" class="list"></div></section>
+      <p id="status" class="status"></p>
+    </section>
+  </main>
+  <script src="/portal-assets/config.js"></script><script src="/portal-assets/supabase-client.js"></script><script src="/portal-assets/customer.js"></script>
+</body></html>

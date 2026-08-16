@@ -30,7 +30,7 @@ class Settings:
     def from_environment(cls) -> Settings:
         return cls(
             openai_api_key=os.getenv("OPENAI_API_KEY") or None,
-            openai_model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+            openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-terra"),
             openai_review_model=os.getenv("OPENAI_REVIEW_MODEL", "gpt-5.6-terra"),
             translation_provider=os.getenv("TRANSLATION_PROVIDER", "openai").lower(),
             max_files=_positive_int("MAX_FILES", 20),

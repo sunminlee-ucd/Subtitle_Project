@@ -8,6 +8,7 @@ venv/
 .env
 API key for openAI.txt
 API key for open AI/
+/SubtitleProject_openai_secretkey.txt
 dist/
 dist_*/
 artifacts/
