@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import html
+import io
 import re
 
 from app.srt import TIMESTAMP_PATTERN, SubtitleCue
@@ -17,6 +19,48 @@ def format_study_time(timestamp: str) -> str:
     if hours:
         return f"{hours}:{minutes:02d}:{seconds:02d}"
     return f"{minutes:02d}:{seconds:02d}"
+
+
+def render_study_guide_from_csv(
+    data: bytes,
+    *,
+    source_language: str,
+    target_language: str,
+    title: str,
+) -> bytes:
+    text = data.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text, newline=""))
+    fieldnames = list(reader.fieldnames or [])
+    text_columns = [
+        field
+        for field in fieldnames
+        if field not in {"Cue_ID", "St", "Et"}
+    ]
+    if len(text_columns) < 2:
+        raise ValueError("The translated CSV needs source and translated subtitle columns.")
+    source_column, target_column = text_columns[:2]
+    cues: list[SubtitleCue] = []
+    translated_texts: list[str] = []
+    for row_number, row in enumerate(reader, start=1):
+        start = (row.get("St") or "").strip()
+        end = (row.get("Et") or "").strip()
+        source_text = (row.get(source_column) or "").strip()
+        translated_text = (row.get(target_column) or "").strip()
+        cues.append(
+            SubtitleCue(
+                identifier=(row.get("Cue_ID") or str(row_number)).strip(),
+                timing=f"{start} --> {end}",
+                text=source_text,
+            )
+        )
+        translated_texts.append(translated_text)
+    return render_study_guide(
+        cues,
+        translated_texts,
+        source_language=source_language,
+        target_language=target_language,
+        title=title,
+    )
 
 
 def render_study_guide(
