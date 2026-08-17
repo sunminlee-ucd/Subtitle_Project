@@ -10,8 +10,13 @@
   async function init() {
     $("setupNotice").hidden = client.isConfigured();
     $("signIn").addEventListener("click", signIn); $("signOut").addEventListener("click", signOut);
+    $("requestPasswordReset").addEventListener("click", requestPasswordReset);
+    $("savePassword").addEventListener("click", savePassword);
+    $("cancelPasswordReset").addEventListener("click", cancelPasswordReset);
     $("trackForm").addEventListener("submit", saveTrack); $("grantAccess").addEventListener("click", grantAccess);
     $("revokeAccess").addEventListener("click", revokeAccess); $("refresh").addEventListener("click", loadDashboard);
+    const recovery = client.isConfigured() ? client.recoverySessionFromUrl() : null;
+    if (recovery) { await showPasswordReset(recovery); return; }
     const session = client.isConfigured() ? await client.validSession() : null; await setSession(session);
   }
   async function signIn() {
@@ -23,6 +28,32 @@
     } catch (error) { $("authStatus").textContent=error.message; }
   }
   async function signOut() { await client.signOut(); await setSession(null); }
+  async function requestPasswordReset() {
+    const email=$("email").value.trim();
+    if(!email){$("authStatus").textContent="Enter your administrator email first.";return;}
+    $("authStatus").textContent="Sending secure password link…";
+    try {
+      const redirectTo=`${location.origin}/admin?recovery=1`;
+      await client.requestPasswordReset(email,redirectTo);
+      $("authStatus").textContent="Check your email for the password setup link.";
+    } catch(error){$("authStatus").textContent=error.message;}
+  }
+  async function showPasswordReset(session) {
+    try {
+      const user=await fetch(`${CUSTOMER_APP_CONFIG.SUPABASE_URL}/auth/v1/user`,{headers:{apikey:CUSTOMER_APP_CONFIG.SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${session.access_token}`}}).then(async(response)=>{const value=await response.json();if(!response.ok)throw new Error(value.message||"The password link is invalid.");return value;});
+      const admin=await client.select("admin_users",`select=user_id&user_id=eq.${encodeURIComponent(user.id)}&limit=1`);
+      if(!admin?.length)throw new Error("This account is not an administrator.");
+      $("auth").hidden=true; $("workspace").hidden=true; $("passwordReset").hidden=false;
+    } catch(error){await client.signOut();$("authStatus").textContent=error.message;$("auth").hidden=false;}
+  }
+  async function savePassword() {
+    const password=$("newPassword").value; const confirmation=$("confirmPassword").value;
+    if(password.length<12){$("passwordStatus").textContent="Use at least 12 characters.";return;}
+    if(password!==confirmation){$("passwordStatus").textContent="The passwords do not match.";return;}
+    try { await client.updatePassword(password); await client.signOut(); $("passwordReset").hidden=true; $("auth").hidden=false; $("password").value=""; $("authStatus").textContent="Password saved. Sign in with your new password."; }
+    catch(error){$("passwordStatus").textContent=error.message;}
+  }
+  async function cancelPasswordReset(){await client.signOut();$("passwordReset").hidden=true;$("auth").hidden=false;$("authStatus").textContent="Password setup cancelled.";}
   async function setSession(session) {
     if (session?.user) {
       const admin = await client.select("admin_users", `select=user_id&user_id=eq.${encodeURIComponent(session.user.id)}&limit=1`);
@@ -32,7 +63,7 @@
         $("authStatus").textContent = "This account is not an administrator.";
       }
     }
-    user=session?.user||null; $("auth").hidden=Boolean(user); $("workspace").hidden=!user; $("userEmail").textContent=user?.email||"";
+    user=session?.user||null; $("passwordReset").hidden=true; $("auth").hidden=Boolean(user); $("workspace").hidden=!user; $("userEmail").textContent=user?.email||"";
     if (user) await loadDashboard();
   }
   async function loadDashboard() {

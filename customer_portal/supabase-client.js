@@ -25,6 +25,33 @@
     async signUp(email, password, displayName) {
       return this.auth("/auth/v1/signup", { email, password, data: { display_name: displayName } });
     }
+    async requestPasswordReset(email, redirectTo) {
+      this.assertConfigured();
+      const query = redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : "";
+      return this.read(await fetch(`${this.baseUrl}/auth/v1/recover${query}`, {
+        method: "POST", headers: this.headers(null, true), body: JSON.stringify({ email })
+      }));
+    }
+    recoverySessionFromUrl() {
+      const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+      if (hash.get("type") !== "recovery" || !hash.get("access_token")) return null;
+      const session = this.saveSession({
+        access_token: hash.get("access_token"),
+        refresh_token: hash.get("refresh_token") || "",
+        expires_in: Number(hash.get("expires_in") || 3600),
+        token_type: hash.get("token_type") || "bearer",
+        user: null
+      });
+      history.replaceState(null, "", `${location.pathname}?recovery=1`);
+      return session;
+    }
+    async updatePassword(password) {
+      const session = await this.validSession();
+      if (!session?.access_token) throw new Error("The password link has expired. Request a new one.");
+      return this.read(await fetch(`${this.baseUrl}/auth/v1/user`, {
+        method: "PUT", headers: this.headers(session.access_token, true), body: JSON.stringify({ password })
+      }));
+    }
     async signOut() {
       const session = this.session();
       if (session?.access_token) {
@@ -36,7 +63,7 @@
       let session = this.session();
       if (!session?.access_token) return null;
       if (session.expires_at_ms > Date.now() + 60_000) return session;
-      if (!session.refresh_token) return null;
+      if (!session.refresh_token) return session.expires_at_ms > Date.now() ? session : null;
       try {
         session = await this.auth("/auth/v1/token?grant_type=refresh_token", { refresh_token: session.refresh_token });
         return this.saveSession(session);

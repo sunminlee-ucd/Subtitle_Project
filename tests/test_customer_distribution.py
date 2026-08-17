@@ -133,3 +133,19 @@ def test_portal_assets_are_not_cached_between_deployments() -> None:
 
     assert 'response.headers["Cache-Control"] = "no-store"' in main_source
     assert 'customer.js?v=20260817-1' in customer_html
+
+
+def test_admin_can_securely_set_or_reset_own_password() -> None:
+    admin_html = (PORTAL / "admin.html").read_text(encoding="utf-8")
+    admin_script = (PORTAL / "admin.js").read_text(encoding="utf-8")
+    client_script = (PORTAL / "supabase-client.js").read_text(encoding="utf-8")
+
+    assert 'id="requestPasswordReset"' in admin_html
+    assert 'id="passwordReset"' in admin_html
+    assert 'minlength="12"' in admin_html
+    assert "/auth/v1/recover" in client_script
+    assert "/auth/v1/user" in client_script
+    assert 'hash.get("type") !== "recovery"' in client_script
+    assert 'client.select("admin_users"' in admin_script
+    assert "password.length<12" in admin_script
+    assert "await client.updatePassword(password)" in admin_script

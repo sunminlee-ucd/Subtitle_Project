@@ -2,7 +2,8 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Subtitle Companion Admin</title><link rel="stylesheet" href="/portal-assets/styles.css"></head>
 <body><header><div class="brand"><div class="logo">A</div><div><h1>Subtitle Companion Admin</h1><div>Library access and customer support</div></div></div></header>
 <main><p id="setupNotice" class="notice" hidden>Configure the Supabase URL and publishable key in <code>customer_portal/config.js</code>.</p>
-  <section id="auth" class="card auth"><h2>Administrator sign in</h2><label>Email<input id="email" type="email"></label><label>Password<input id="password" type="password"></label><button id="signIn">Sign in</button><p id="authStatus" class="status"></p></section>
+  <section id="auth" class="card auth"><h2>Administrator sign in</h2><label>Email<input id="email" type="email" autocomplete="username"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label><div class="row"><button id="signIn">Sign in</button><button id="requestPasswordReset" class="secondary">Set / reset password</button></div><p class="muted">We will email a secure link to set your password.</p><p id="authStatus" class="status"></p></section>
+  <section id="passwordReset" class="card auth" hidden><h2>Choose a new administrator password</h2><p class="muted">Use at least 12 characters. A passphrase is recommended.</p><label>New password<input id="newPassword" type="password" minlength="12" autocomplete="new-password"></label><label>Confirm new password<input id="confirmPassword" type="password" minlength="12" autocomplete="new-password"></label><div class="row"><button id="savePassword">Save password</button><button id="cancelPasswordReset" class="secondary">Cancel</button></div><p id="passwordStatus" class="status"></p></section>
   <section id="workspace" hidden>
     <div class="card row spread"><div><strong id="userEmail"></strong><div class="muted">Administrator access is verified by the database.</div></div><button id="signOut" class="quiet">Sign out</button></div>
     <section class="card"><h2>Add or update a subtitle</h2><form id="trackForm">
@@ -15,4 +16,4 @@
     <div class="grid"><section class="card"><h2>Video requests</h2><div id="requests" class="list"></div></section><section class="card"><h2>Error reports</h2><div id="reports" class="list"></div></section></div>
     <p id="status" class="status"></p>
   </section>
-</main><script src="/portal-assets/config.js"></script><script src="/portal-assets/supabase-client.js"></script><script src="/portal-assets/admin.js"></script></body></html>
+</main><script src="/portal-assets/config.js"></script><script src="/portal-assets/supabase-client.js?v=20260817-2"></script><script src="/portal-assets/admin.js?v=20260817-2"></script></body></html>
