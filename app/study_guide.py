@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+import arabic_reshaper
+from bidi.algorithm import get_display
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A5
@@ -112,7 +114,6 @@ def render_study_pdf(
         leading=20,
         textColor=colors.HexColor("#172033"),
         spaceAfter=4,
-        shaping=1,
     )
     meta_style = ParagraphStyle(
         "StudyMeta",
@@ -137,8 +138,8 @@ def render_study_pdf(
         rows.append(
             [
                 Paragraph(format_study_time(match.group("start")), time_style),
-                Paragraph(_paragraph_text(cue.text), source_style),
-                Paragraph(_paragraph_text(translated.strip()), target_style),
+                Paragraph(_paragraph_text(cue.text, source_language), source_style),
+                Paragraph(_paragraph_text(translated.strip(), target_language), target_style),
             ]
         )
 
@@ -181,7 +182,7 @@ def render_study_pdf(
     table.setStyle(TableStyle(style_commands))
 
     story = [
-        Paragraph(escape(title), title_style),
+        Paragraph(_paragraph_text(title, source_language), title_style),
         Paragraph(
             f"{escape(source_language)} -> {escape(target_language)} | "
             f"{len(cues)} subtitle lines | simplified start times",
@@ -205,14 +206,20 @@ def _body_style(name: str, font_name: str, language: str) -> ParagraphStyle:
         leading=17,
         textColor=colors.HexColor("#1E293B"),
         alignment=TA_RIGHT if is_rtl else TA_LEFT,
-        wordWrap="RTL" if is_rtl else "CJK" if is_cjk else "LTR",
-        shaping=1,
+        wordWrap="CJK" if is_cjk else None,
         splitLongWords=1,
     )
 
 
-def _paragraph_text(value: str) -> str:
-    return "<br/>".join(escape(line) for line in value.strip().splitlines())
+def _paragraph_text(value: str, language: str) -> str:
+    is_rtl = any(term in language.casefold() for term in RTL_LANGUAGE_TERMS)
+    rendered_lines: list[str] = []
+    for line in value.strip().splitlines():
+        display_line = line
+        if is_rtl:
+            display_line = get_display(arabic_reshaper.reshape(line))
+        rendered_lines.append(escape(display_line))
+    return "<br/>".join(rendered_lines)
 
 
 def _font_for_language(language: str) -> str:
@@ -266,7 +273,7 @@ def _font_for_language(language: str) -> str:
             continue
         font_name = f"StudyFont{len(_FONT_CACHE) + 1}"
         try:
-            pdfmetrics.registerFont(TTFont(font_name, str(path), shapable=True))
+            pdfmetrics.registerFont(TTFont(font_name, str(path)))
         except Exception:
             continue
         _FONT_CACHE[key] = font_name
