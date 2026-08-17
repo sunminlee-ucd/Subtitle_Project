@@ -149,3 +149,18 @@ def test_admin_can_securely_set_or_reset_own_password() -> None:
     assert 'client.select("admin_users"' in admin_script
     assert "password.length<12" in admin_script
     assert "await client.updatePassword(password)" in admin_script
+
+
+def test_admin_library_lists_searches_and_auto_ids_subtitles() -> None:
+    admin_html = (PORTAL / "admin.html").read_text(encoding="utf-8")
+    admin_script = (PORTAL / "admin.js").read_text(encoding="utf-8")
+
+    assert 'id="videoKey" type="hidden"' in admin_html
+    assert 'id="librarySearch"' in admin_html
+    assert 'id="library"' in admin_html
+    assert 'id="newSubtitle"' in admin_html
+    assert "crypto.randomUUID()" in admin_script
+    assert "function renderLibrary()" in admin_script
+    assert "function editTrack(track,video)" in admin_script
+    assert "Edit / replace SRT" in admin_script
+    assert "provider_video_key" in admin_script

@@ -7,13 +7,15 @@
   <section id="workspace" hidden>
     <div class="card row spread"><div><strong id="userEmail"></strong><div class="muted">Administrator access is verified by the database.</div></div><button id="signOut" class="quiet">Sign out</button></div>
     <section class="card"><h2>Add or update a subtitle</h2><form id="trackForm">
-      <div class="grid three"><label>Service<select id="provider"><option value="netflix">Netflix</option><option value="disney">Disney+</option><option value="youtube">YouTube</option><option value="other">Other</option></select></label><label>Video ID / key<input id="videoKey" required></label><label>Title<input id="title" required></label></div>
-      <div class="grid three"><label>Episode label<input id="episode"></label><label>Language code<input id="languageCode" required placeholder="fa"></label><label>Language name<input id="languageName" required placeholder="Persian"></label></div>
-      <div class="grid"><label>Track label<input id="trackLabel" value="Default" required></label><label>Translated SRT file<input id="srtFile" type="file" accept=".srt" required></label></div><button type="submit">Save to library</button>
+      <input id="videoKey" type="hidden"><input id="editingTrackId" type="hidden">
+      <div class="grid three"><label>Service<select id="provider"><option value="netflix">Netflix</option><option value="disney">Disney+</option><option value="youtube">YouTube</option><option value="other">Other</option></select></label><label>Title<input id="title" required></label><label>Episode label<input id="episode" placeholder="EP1"></label></div>
+      <div class="grid three"><label>Language code<input id="languageCode" required placeholder="fa"></label><label>Language name<input id="languageName" required placeholder="Persian"></label><label>Track label<input id="trackLabel" value="Default" required></label></div>
+      <div class="grid"><label>Translated SRT file<input id="srtFile" type="file" accept=".srt" required></label><div class="row"><button type="submit">Save to library</button><button id="newSubtitle" type="button" class="secondary">Start new subtitle</button></div></div>
     </form></section>
+    <section class="card"><div class="row spread"><div><h2>Saved subtitle library</h2><div class="muted">Search by title, episode, service, language or track label.</div></div><button id="refreshLibrary" class="secondary">Refresh</button></div><label>Search library<input id="librarySearch" type="search" placeholder="Try a title or EP1"></label><div id="library" class="list"></div></section>
     <section class="card"><h2>Grant customer access</h2><div class="grid"><label>Customer<select id="grantCustomer"></select></label><label>Subtitle<select id="grantTrack"></select></label></div><div class="row"><button id="grantAccess">Grant access</button><button id="revokeAccess" class="secondary">Revoke access</button></div></section>
     <section class="card"><div class="row spread"><h2>Current grants</h2><button id="refresh" class="secondary">Refresh</button></div><div id="grants" class="list"></div></section>
     <div class="grid"><section class="card"><h2>Video requests</h2><div id="requests" class="list"></div></section><section class="card"><h2>Error reports</h2><div id="reports" class="list"></div></section></div>
     <p id="status" class="status"></p>
   </section>
-</main><script src="/portal-assets/config.js"></script><script src="/portal-assets/supabase-client.js?v=20260817-2"></script><script src="/portal-assets/admin.js?v=20260817-2"></script></body></html>
+</main><script src="/portal-assets/config.js"></script><script src="/portal-assets/supabase-client.js?v=20260817-3"></script><script src="/portal-assets/admin.js?v=20260817-3"></script></body></html>

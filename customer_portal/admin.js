@@ -14,6 +14,9 @@
     $("savePassword").addEventListener("click", savePassword);
     $("cancelPasswordReset").addEventListener("click", cancelPasswordReset);
     $("trackForm").addEventListener("submit", saveTrack); $("grantAccess").addEventListener("click", grantAccess);
+    $("newSubtitle").addEventListener("click", startNewSubtitle);
+    $("librarySearch").addEventListener("input", renderLibrary);
+    $("refreshLibrary").addEventListener("click", loadDashboard);
     $("revokeAccess").addEventListener("click", revokeAccess); $("refresh").addEventListener("click", loadDashboard);
     const recovery = client.isConfigured() ? client.recoverySessionFromUrl() : null;
     if (recovery) { await showPasswordReset(recovery); return; }
@@ -71,12 +74,12 @@
     try {
       const result = await Promise.all([
         client.select("profiles", "select=id,email,display_name&order=email"),
-        client.select("subtitle_tracks", "select=id,language_code,language_name,label,cue_count,video:videos(title,episode_label,provider)&order=updated_at.desc"),
+        client.select("subtitle_tracks", "select=id,language_code,language_name,label,cue_count,storage_path,updated_at,video:videos(id,title,episode_label,provider,provider_video_key)&order=updated_at.desc"),
         client.select("subtitle_grants", "select=customer_id,subtitle_track_id,granted_at,expires_at&order=granted_at.desc"),
         client.select("video_requests", "select=id,provider,video_url,requested_language,notes,status,created_at,customer_id&order=created_at.desc&limit=50"),
         client.select("error_reports", "select=id,category,message,video_url,cue_time_seconds,status,created_at,customer_id&order=created_at.desc&limit=50")
       ]);
-      [profiles,tracks] = result; renderSelectors(); renderGrants(result[2]); renderCases($("requests"),result[3],"video_requests",["new","reviewing","completed","declined"]); renderCases($("reports"),result[4],"error_reports",["new","reviewing","resolved","closed"]); setStatus("");
+      [profiles,tracks] = result; renderSelectors(); renderLibrary(); renderGrants(result[2]); renderCases($("requests"),result[3],"video_requests",["new","reviewing","completed","declined"]); renderCases($("reports"),result[4],"error_reports",["new","reviewing","resolved","closed"]); setStatus("");
     } catch (error) { setStatus(error.message); }
   }
   function renderSelectors() {
@@ -85,18 +88,27 @@
     const track=$("grantTrack"); track.replaceChildren();
     tracks.forEach((row)=>{ const video=Array.isArray(row.video)?row.video[0]:row.video; track.add(new Option(`${video?.title||"Untitled"} ${video?.episode_label||""} · ${row.language_name} (${row.cue_count})`,row.id)); });
   }
+  function renderLibrary() {
+    const query=$("librarySearch").value.trim().toLocaleLowerCase(); const list=$("library"); list.replaceChildren();
+    const visible=tracks.filter((row)=>{const video=Array.isArray(row.video)?row.video[0]:row.video;return [video?.title,video?.episode_label,video?.provider,row.language_code,row.language_name,row.label].filter(Boolean).join(" ").toLocaleLowerCase().includes(query);});
+    for(const row of visible){const video=Array.isArray(row.video)?row.video[0]:row.video;const item=document.createElement("article");item.className="list-item";const title=document.createElement("strong");title.textContent=`${video?.title||"Untitled"}${video?.episode_label?` · ${video.episode_label}`:""}`;const detail=document.createElement("p");detail.textContent=`${video?.provider||"other"} · ${row.language_name} (${row.language_code}) · ${row.label} · ${row.cue_count} lines · ${row.storage_path?"Private SRT stored":"Legacy subtitle data"}`;const edit=document.createElement("button");edit.type="button";edit.className="secondary";edit.textContent="Edit / replace SRT";edit.addEventListener("click",()=>editTrack(row,video));item.append(title,detail,edit);list.append(item);}if(!visible.length)list.textContent=query?"No subtitles match this search.":"No subtitles have been saved yet.";
+  }
+  function editTrack(track,video){$("editingTrackId").value=track.id;$("videoKey").value=video?.provider_video_key||"";$("provider").value=video?.provider||"other";$("title").value=video?.title||"";$("episode").value=video?.episode_label||"";$("languageCode").value=track.language_code;$("languageName").value=track.language_name;$("trackLabel").value=track.label;$("srtFile").value="";$("trackForm").scrollIntoView({behavior:"smooth",block:"start"});setStatus("Editing saved subtitle. Choose an SRT file to replace it.");}
+  function startNewSubtitle(){const form=$("trackForm");form.reset();$("trackLabel").value="Default";$("videoKey").value="";$("editingTrackId").value="";setStatus("Ready to add a new subtitle. A unique video ID will be generated automatically.");}
   async function saveTrack(event) {
     event.preventDefault(); const form=event.currentTarget; setStatus("Reading and saving SRT…");
     try {
       const file=$("srtFile").files[0]; const srt=await file.text(); const cues=parseSrt(srt);
-      const videos=await client.upsert("videos",{provider:$("provider").value,provider_video_key:$("videoKey").value.trim(),title:$("title").value.trim(),episode_label:$("episode").value.trim()},"on_conflict=provider,provider_video_key");
+      const videoKey=$("videoKey").value||crypto.randomUUID(); $("videoKey").value=videoKey;
+      const videos=await client.upsert("videos",{provider:$("provider").value,provider_video_key:videoKey,title:$("title").value.trim(),episode_label:$("episode").value.trim()},"on_conflict=provider,provider_video_key");
       const video=videos?.[0]; if(!video) throw new Error("The video record could not be saved.");
-      const saved=await client.upsert("subtitle_tracks",{video_id:video.id,language_code:$("languageCode").value.trim().toLowerCase(),language_name:$("languageName").value.trim(),label:$("trackLabel").value.trim(),cues},"on_conflict=video_id,language_code,label");
+      const trackPayload={video_id:video.id,language_code:$("languageCode").value.trim().toLowerCase(),language_name:$("languageName").value.trim(),label:$("trackLabel").value.trim(),cues};
+      const editingId=$("editingTrackId").value; const saved=editingId?await client.update("subtitle_tracks",trackPayload,`id=eq.${encodeURIComponent(editingId)}`):await client.upsert("subtitle_tracks",trackPayload,"on_conflict=video_id,language_code,label");
       const track=saved?.[0]; if(!track) throw new Error("The subtitle record could not be saved.");
       const storagePath=`${track.id}.srt`;
       await client.uploadStorage("subtitle-files",storagePath,new Blob([srt],{type:"application/x-subrip"}),"application/x-subrip");
       await client.update("subtitle_tracks",{storage_path:storagePath},`id=eq.${encodeURIComponent(track.id)}`);
-      form.reset(); $("trackLabel").value="Default"; setStatus(`${cues.length} subtitle lines saved to private storage.`); await loadDashboard();
+      startNewSubtitle(); await loadDashboard(); setStatus(`${cues.length} subtitle lines saved to private storage. The item is visible in the library below.`);
     } catch (error) { setStatus(error.message); }
   }
   function parseSrt(raw) {
