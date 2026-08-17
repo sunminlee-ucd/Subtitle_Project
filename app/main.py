@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -33,6 +33,16 @@ app = FastAPI(
     description="Translate multiple SRT files while preserving subtitle timing.",
 )
 app.mount("/portal-assets", StaticFiles(directory=PORTAL_DIR), name="portal-assets")
+
+
+@app.middleware("http")
+async def prevent_stale_portal_assets(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path in {"/customer", "/admin"} or request.url.path.startswith(
+        "/portal-assets/"
+    ):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @lru_cache

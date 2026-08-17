@@ -89,3 +89,11 @@ def test_customer_forms_keep_a_stable_reference_across_async_requests() -> None:
 
     assert source.count("const form = event.currentTarget;") == 2
     assert "event.currentTarget.reset()" not in source
+
+
+def test_portal_assets_are_not_cached_between_deployments() -> None:
+    main_source = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
+    customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
+
+    assert 'response.headers["Cache-Control"] = "no-store"' in main_source
+    assert 'customer.js?v=20260817-1' in customer_html
