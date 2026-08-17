@@ -82,3 +82,10 @@ def test_public_root_redirects_to_customer_portal() -> None:
 
     assert 'RedirectResponse(url="/customer", status_code=307)' in main_source
     assert 'app.mount("/static"' not in main_source
+
+
+def test_customer_forms_keep_a_stable_reference_across_async_requests() -> None:
+    source = (PORTAL / "customer.js").read_text(encoding="utf-8")
+
+    assert source.count("const form = event.currentTarget;") == 2
+    assert "event.currentTarget.reset()" not in source

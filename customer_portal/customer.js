@@ -55,17 +55,19 @@
   }
   async function submitRequest(event) {
     event.preventDefault();
+    const form = event.currentTarget;
     try {
       await client.insert("video_requests", { customer_id:user.id, provider:$("requestProvider").value, video_url:$("requestUrl").value.trim(), requested_language:$("requestLanguage").value.trim(), notes:$("requestNotes").value.trim() });
-      event.currentTarget.reset(); setStatus("Your request was sent. Thank you!"); await loadHistory();
+      form.reset(); setStatus("Your request was sent. Thank you!"); await loadHistory();
     } catch (error) { setStatus(error.message); }
   }
   async function submitReport(event) {
     event.preventDefault();
+    const form = event.currentTarget;
     try {
       const time = $("reportTime").value;
       await client.insert("error_reports", { customer_id:user.id, subtitle_track_id:$("reportTrack").value || null, video_url:$("reportUrl").value.trim(), category:$("reportCategory").value, message:$("reportMessage").value.trim(), cue_time_seconds:time ? Number(time) : null });
-      event.currentTarget.reset(); setStatus("Your report was sent. We will review it."); await loadHistory();
+      form.reset(); setStatus("Your report was sent. We will review it."); await loadHistory();
     } catch (error) { setStatus(error.message); }
   }
   async function loadHistory() {
