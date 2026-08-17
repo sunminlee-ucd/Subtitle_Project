@@ -10,7 +10,7 @@ from pathlib import Path
 
 from app.csv_subtitles import parse_subtitle_csv, target_column_for_language
 from app.srt import TIMESTAMP_PATTERN, SrtDocument, SubtitleCue
-from app.study_guide import render_study_guide_from_csv
+from app.study_guide import render_study_pdf_from_csv
 from app.translator import SubtitleTranslator, TranslationIssue, TranslationProgress
 
 SAVE_PHRASE_PATTERN = re.compile(r"(?:\s*Save Phrase\s*)+$", re.IGNORECASE)
@@ -327,9 +327,9 @@ def write_translation_package(
         translated_csv_path = output_directory / episode.translated_csv_file
         translated_csv_path.write_bytes(episode.translated_csv_content)
         written.append(translated_csv_path)
-        study_guide_path = output_directory / _study_guide_filename(episode.translated_csv_file)
-        study_guide_path.write_bytes(
-            render_study_guide_from_csv(
+        study_pdf_path = output_directory / _study_pdf_filename(episode.translated_csv_file)
+        study_pdf_path.write_bytes(
+            render_study_pdf_from_csv(
                 episode.translated_csv_content,
                 source_language=package.source_language,
                 target_language=package.target_language,
@@ -339,7 +339,7 @@ def write_translation_package(
                 ),
             )
         )
-        written.append(study_guide_path)
+        written.append(study_pdf_path)
 
     summary_path = output_directory / summary_filename
     summary_path.write_text(
@@ -356,7 +356,7 @@ def write_translation_package(
                         "translation_status": "translated",
                         "quality_report_file": episode.quality_report_file,
                         "translated_csv_file": episode.translated_csv_file,
-                        "study_guide_file": _study_guide_filename(episode.translated_csv_file),
+                        "study_pdf_file": _study_pdf_filename(episode.translated_csv_file),
                         "quality_issue_count": episode.issue_count,
                         "warnings": list(episode.warnings),
                     }
@@ -396,8 +396,8 @@ def _episode_output_name(source_file: str, episode_number: int, language: str) -
     return f"{source_stem}.ep{episode_number:02d}.{language_slug or 'translated'}.srt"
 
 
-def _study_guide_filename(translated_csv_file: str) -> str:
-    return f"{Path(translated_csv_file).stem}.study.html"
+def _study_pdf_filename(translated_csv_file: str) -> str:
+    return f"{Path(translated_csv_file).stem}.study.pdf"
 
 
 def _render_quality_report(
