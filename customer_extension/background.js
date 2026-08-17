@@ -1,4 +1,4 @@
-importScripts("config.js", "supabase-client.js");
+importScripts("config.js", "supabase-client.js", "subtitle-core.js");
 
 const client = new CustomerSupabase.SupabaseRestClient(CUSTOMER_APP_CONFIG);
 
@@ -22,15 +22,18 @@ async function restoreSelectedTrack(tabId) {
   }
   const rows = await client.select(
     "subtitle_tracks",
-    `select=id,cues&id=eq.${encodeURIComponent(stored.selectedTrackId)}&limit=1`
+    `select=id,storage_path,cues&id=eq.${encodeURIComponent(stored.selectedTrackId)}&limit=1`
   );
   if (!rows?.[0]) {
     return;
   }
+  const cues = rows[0].storage_path
+    ? CustomerSubtitleCore.parseSrt(await client.downloadStorageText("subtitle-files", rows[0].storage_path))
+    : CustomerSubtitleCore.normalizeCues(rows[0].cues);
   await chrome.tabs.sendMessage(tabId, {
     type: "LOAD_AUTHORIZED_TRACK",
     trackId: rows[0].id,
     label: stored.selectedTrackLabel || "Authorized subtitle",
-    cues: rows[0].cues
+    cues
   });
 }

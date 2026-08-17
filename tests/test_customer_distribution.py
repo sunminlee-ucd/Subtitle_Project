@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 EXTENSION = ROOT / "customer_extension"
@@ -75,6 +79,38 @@ def test_customer_and_admin_web_routes_exist() -> None:
     assert '@app.get("/admin"' in main_source
     assert (PORTAL / "index.html").exists()
     assert (PORTAL / "admin.html").exists()
+
+
+def test_private_srt_storage_is_authorized_by_customer_grant() -> None:
+    sql = SCHEMA.read_text(encoding="utf-8").lower()
+    extension_client = (EXTENSION / "supabase-client.js").read_text(encoding="utf-8")
+    popup = (EXTENSION / "popup.js").read_text(encoding="utf-8")
+    background = (EXTENSION / "background.js").read_text(encoding="utf-8")
+    admin = (PORTAL / "admin.js").read_text(encoding="utf-8")
+
+    assert "'subtitle-files'" in sql
+    assert "public = false" in sql
+    assert "subtitle_files_select_authorized" in sql
+    assert "private.can_access_subtitle(track.id)" in sql
+    assert "storage_path = name" in sql
+    assert "/storage/v1/object/authenticated/" in extension_client
+    assert 'downloadStorageText("subtitle-files"' in popup
+    assert 'downloadStorageText("subtitle-files"' in background
+    assert 'uploadStorage("subtitle-files"' in admin
+    assert 'storagePath=`${track.id}.srt`' in admin
+
+
+def test_customer_srt_parser_with_node() -> None:
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not available on PATH")
+    subprocess.run(
+        [node, str(ROOT / "tests" / "customer_subtitle_core_smoke.js")],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def test_public_root_redirects_to_customer_portal() -> None:

@@ -56,6 +56,19 @@
     async upsert(table, body, query = "") { return this.data("POST", table, query, body, "resolution=merge-duplicates,return=representation"); }
     async update(table, body, query = "") { return this.data("PATCH", table, query, body, "return=representation"); }
     async remove(table, query = "") { return this.data("DELETE", table, query, null, "return=minimal"); }
+    async uploadStorage(bucket, path, body, contentType = "application/octet-stream") {
+      this.assertConfigured();
+      const session = await this.validSession();
+      if (!session) throw new Error("Please sign in first.");
+      const objectPath = String(path || "").split("/").map(encodeURIComponent).join("/");
+      const headers = this.headers(session.access_token);
+      headers["Content-Type"] = contentType;
+      headers["x-upsert"] = "true";
+      return this.read(await fetch(
+        `${this.baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath}`,
+        { method: "POST", headers, body }
+      ));
+    }
     async data(method, table, query = "", body = null, prefer = "") {
       this.assertConfigured();
       const session = await this.validSession();

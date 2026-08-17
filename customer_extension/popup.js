@@ -105,12 +105,13 @@
   async function selectTrack(track, video, button) {
     setStatus("Preparing subtitles…");
     try {
-      const rows = await client.select("subtitle_tracks", `select=id,cues&id=eq.${encodeURIComponent(track.id)}&limit=1`);
+      const rows = await client.select("subtitle_tracks", `select=id,storage_path,cues&id=eq.${encodeURIComponent(track.id)}&limit=1`);
       if (!rows?.[0]) {
         throw new Error("This subtitle is no longer available.");
       }
+      const cues = await loadTrackCues(rows[0]);
       const label = `${video?.title || "Subtitle"} · ${track.language_name}`;
-      const result = await sendToTab({ type: "LOAD_AUTHORIZED_TRACK", trackId: track.id, label, cues: rows[0].cues });
+      const result = await sendToTab({ type: "LOAD_AUTHORIZED_TRACK", trackId: track.id, label, cues });
       await chrome.storage.local.set({ selectedTrackId: track.id, selectedTrackLabel: label });
       document.querySelectorAll(".track").forEach((item) => item.classList.remove("selected"));
       button.classList.add("selected");
@@ -118,6 +119,14 @@
     } catch (error) {
       setStatus(error.message);
     }
+  }
+
+  async function loadTrackCues(track) {
+    if (track.storage_path) {
+      const srt = await client.downloadStorageText("subtitle-files", track.storage_path);
+      return CustomerSubtitleCore.parseSrt(srt);
+    }
+    return CustomerSubtitleCore.normalizeCues(track.cues);
   }
 
   async function restoreViewerState() {

@@ -11,3 +11,5 @@ Production Cloud Run URLs:
 - `https://subtitle-project-978670366914.europe-west2.run.app/admin`
 
 The browser receives only a Supabase publishable key. Database RLS remains the authorization boundary.
+
+Administrator SRT uploads are stored in the private `subtitle-files` Supabase Storage bucket. Run `supabase/storage_migration.sql` once for an existing project before using this upload flow.

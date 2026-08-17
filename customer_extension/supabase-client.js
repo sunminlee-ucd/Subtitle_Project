@@ -154,6 +154,23 @@
       return this.dataRequest("DELETE", table, query, null, "return=minimal");
     }
 
+    async downloadStorageText(bucket, path) {
+      this.assertConfigured();
+      const session = await this.validSession();
+      if (!session?.access_token) {
+        throw new Error("Please sign in first.");
+      }
+      const objectPath = String(path || "").split("/").map(encodeURIComponent).join("/");
+      const response = await fetch(
+        `${this.baseUrl}/storage/v1/object/authenticated/${encodeURIComponent(bucket)}/${objectPath}`,
+        { headers: this.headers(session.access_token) }
+      );
+      if (!response.ok) {
+        return this.readResponse(response);
+      }
+      return response.text();
+    }
+
     async dataRequest(method, table, query = "", body = null, prefer = "") {
       this.assertConfigured();
       const session = await this.validSession();

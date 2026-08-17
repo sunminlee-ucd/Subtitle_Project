@@ -36,6 +36,7 @@ create table if not exists public.subtitle_tracks (
   language_code text not null,
   language_name text not null,
   label text not null default 'Default',
+  storage_path text unique,
   cues jsonb not null check (jsonb_typeof(cues) = 'array'),
   cue_count integer generated always as (jsonb_array_length(cues)) stored,
   is_active boolean not null default true,
@@ -83,6 +84,19 @@ create index if not exists subtitle_grants_customer_id_idx on public.subtitle_gr
 create index if not exists subtitle_grants_track_id_idx on public.subtitle_grants(subtitle_track_id);
 create index if not exists video_requests_customer_id_idx on public.video_requests(customer_id);
 create index if not exists error_reports_customer_id_idx on public.error_reports(customer_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'subtitle-files',
+  'subtitle-files',
+  false,
+  5242880,
+  array['application/x-subrip', 'text/plain', 'application/octet-stream']
+)
+on conflict (id) do update set
+  public = false,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 create or replace function private.set_updated_at()
 returns trigger
@@ -271,6 +285,35 @@ with check (
 drop policy if exists reports_admin_update on public.error_reports;
 create policy reports_admin_update on public.error_reports for update to authenticated
 using (private.is_subtitle_admin()) with check (private.is_subtitle_admin());
+
+drop policy if exists subtitle_files_select_authorized on storage.objects;
+create policy subtitle_files_select_authorized on storage.objects
+for select to authenticated
+using (
+  bucket_id = 'subtitle-files'
+  and (
+    private.is_subtitle_admin()
+    or exists (
+      select 1
+      from public.subtitle_tracks track
+      where track.storage_path = name
+        and private.can_access_subtitle(track.id)
+    )
+  )
+);
+drop policy if exists subtitle_files_admin_insert on storage.objects;
+create policy subtitle_files_admin_insert on storage.objects
+for insert to authenticated
+with check (bucket_id = 'subtitle-files' and private.is_subtitle_admin());
+drop policy if exists subtitle_files_admin_update on storage.objects;
+create policy subtitle_files_admin_update on storage.objects
+for update to authenticated
+using (bucket_id = 'subtitle-files' and private.is_subtitle_admin())
+with check (bucket_id = 'subtitle-files' and private.is_subtitle_admin());
+drop policy if exists subtitle_files_admin_delete on storage.objects;
+create policy subtitle_files_admin_delete on storage.objects
+for delete to authenticated
+using (bucket_id = 'subtitle-files' and private.is_subtitle_admin());
 
 revoke all on all tables in schema public from anon, authenticated;
 grant select, update (display_name) on public.profiles to authenticated;

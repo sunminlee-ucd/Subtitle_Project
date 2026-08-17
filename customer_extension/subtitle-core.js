@@ -21,6 +21,36 @@
       .sort((left, right) => left.start - right.start || left.end - right.end);
   }
 
+  function parseSrt(raw) {
+    const normalized = String(raw || "")
+      .replace(/^\uFEFF/, "")
+      .replace(/\r\n?/g, "\n")
+      .trim();
+    const cues = [];
+    for (const block of normalized.split(/\n{2,}/)) {
+      const lines = block.split("\n");
+      const timingIndex = lines.findIndex((line) => line.includes("-->"));
+      if (timingIndex < 0) continue;
+      const match = lines[timingIndex].match(
+        /^(\d{1,3}:[0-5]\d:[0-5]\d[,.]\d{1,3})\s*-->\s*(\d{1,3}:[0-5]\d:[0-5]\d[,.]\d{1,3})/
+      );
+      const text = lines.slice(timingIndex + 1).join("\n").trim();
+      if (!match || !text) continue;
+      const start = timestampSeconds(match[1]);
+      const end = timestampSeconds(match[2]);
+      if (end > start) cues.push({ start, end, text });
+    }
+    if (!cues.length) {
+      throw new Error("No valid subtitle lines were found in the SRT file.");
+    }
+    return normalizeCues(cues);
+  }
+
+  function timestampSeconds(value) {
+    const [hours, minutes, tail] = value.replace(",", ".").split(":");
+    return Number(hours) * 3600 + Number(minutes) * 60 + Number(tail);
+  }
+
   function activeCueIndices(cues, videoTime, offsetSeconds = 0) {
     const subtitleTime = Number(videoTime) - Number(offsetSeconds || 0);
     return cues
@@ -51,5 +81,5 @@
     return { provider: "other", key: parsed.pathname };
   }
 
-  return { activeCueIndices, normalizeCues, pageVideoIdentity, playbackBounds };
+  return { activeCueIndices, normalizeCues, pageVideoIdentity, parseSrt, playbackBounds };
 });

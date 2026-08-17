@@ -55,13 +55,17 @@
     tracks.forEach((row)=>{ const video=Array.isArray(row.video)?row.video[0]:row.video; track.add(new Option(`${video?.title||"Untitled"} ${video?.episode_label||""} · ${row.language_name} (${row.cue_count})`,row.id)); });
   }
   async function saveTrack(event) {
-    event.preventDefault(); setStatus("Reading and saving SRT…");
+    event.preventDefault(); const form=event.currentTarget; setStatus("Reading and saving SRT…");
     try {
-      const cues=parseSrt(await $("srtFile").files[0].text());
+      const file=$("srtFile").files[0]; const srt=await file.text(); const cues=parseSrt(srt);
       const videos=await client.upsert("videos",{provider:$("provider").value,provider_video_key:$("videoKey").value.trim(),title:$("title").value.trim(),episode_label:$("episode").value.trim()},"on_conflict=provider,provider_video_key");
       const video=videos?.[0]; if(!video) throw new Error("The video record could not be saved.");
-      await client.upsert("subtitle_tracks",{video_id:video.id,language_code:$("languageCode").value.trim().toLowerCase(),language_name:$("languageName").value.trim(),label:$("trackLabel").value.trim(),cues},"on_conflict=video_id,language_code,label");
-      event.currentTarget.reset(); $("trackLabel").value="Default"; setStatus(`${cues.length} subtitle lines saved.`); await loadDashboard();
+      const saved=await client.upsert("subtitle_tracks",{video_id:video.id,language_code:$("languageCode").value.trim().toLowerCase(),language_name:$("languageName").value.trim(),label:$("trackLabel").value.trim(),cues},"on_conflict=video_id,language_code,label");
+      const track=saved?.[0]; if(!track) throw new Error("The subtitle record could not be saved.");
+      const storagePath=`${track.id}.srt`;
+      await client.uploadStorage("subtitle-files",storagePath,new Blob([srt],{type:"application/x-subrip"}),"application/x-subrip");
+      await client.update("subtitle_tracks",{storage_path:storagePath},`id=eq.${encodeURIComponent(track.id)}`);
+      form.reset(); $("trackLabel").value="Default"; setStatus(`${cues.length} subtitle lines saved to private storage.`); await loadDashboard();
     } catch (error) { setStatus(error.message); }
   }
   function parseSrt(raw) {

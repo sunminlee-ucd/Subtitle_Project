@@ -23,3 +23,5 @@ Only use a `sb_publishable_...` key here. Never use `sb_secret_...` or `service_
 ## Download limitation
 
 The extension has no download/export UI or permission. However, subtitles displayed in a browser must reach that browser, so a technically skilled customer can still inspect memory or network traffic. Absolute copying prevention requires a licensed DRM delivery design and still cannot be guaranteed.
+
+Authorized SRT files are read from the private Supabase Storage bucket named `subtitle-files` with the customer's current JWT. Storage RLS checks the same `subtitle_grants` relation used by the library. The extension parses the SRT in memory and does not save it as a local file.
