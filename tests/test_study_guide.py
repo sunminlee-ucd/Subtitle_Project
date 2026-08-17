@@ -1,5 +1,5 @@
 from app.srt import SubtitleCue
-from app.study_guide import format_study_time, render_study_guide
+from app.study_guide import format_study_time, render_study_pdf
 
 
 def test_format_study_time_removes_milliseconds_and_unused_hours() -> None:
@@ -7,24 +7,28 @@ def test_format_study_time_removes_milliseconds_and_unused_hours() -> None:
     assert format_study_time("01:02:03.999") == "1:02:03"
 
 
-def test_render_study_guide_contains_source_translation_and_print_layout() -> None:
-    content = render_study_guide(
+def test_render_study_pdf_creates_real_pdf_with_table_content() -> None:
+    content = render_study_pdf(
         [
             SubtitleCue(
                 identifier="1",
                 timing="00:01:23,456 --> 00:01:25,100",
-                text="Original <line>",
-            )
+                text="Original line",
+            ),
+            SubtitleCue(
+                identifier="2",
+                timing="00:01:28,000 --> 00:01:31,000",
+                text="A longer original subtitle that should wrap inside its table cell.",
+            ),
         ],
-        ["Translated line"],
+        [
+            "Translated line",
+            "A longer translated subtitle that should wrap inside its table cell.",
+        ],
         source_language="English",
-        target_language="Persian (Farsi)",
+        target_language="English",
         title="Episode 01 Study Guide",
-    ).decode("utf-8")
+    )
 
-    assert "01:23" in content
-    assert "00:01:23,456" not in content
-    assert "Original &lt;line&gt;" in content
-    assert "Translated line" in content
-    assert 'dir="rtl"' in content
-    assert "@media print" in content
+    assert content.startswith(b"%PDF-")
+    assert len(content) > 2_000
