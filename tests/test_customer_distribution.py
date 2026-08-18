@@ -127,25 +127,46 @@ def test_customer_forms_keep_a_stable_reference_across_async_requests() -> None:
     assert "event.currentTarget.reset()" not in source
 
 
-def test_request_form_supports_title_based_app_requests() -> None:
+def test_request_form_supports_visual_tmdb_selection_and_manual_fallback() -> None:
     customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
     customer_script = (PORTAL / "customer.js").read_text(encoding="utf-8")
 
-    assert 'id="requestTitle" required placeholder="e.g. Derry Girls"' in customer_html
+    assert 'id="requestCatalogQuery" type="search"' in customer_html
+    assert 'id="catalogResults" class="catalog-results"' in customer_html
+    assert 'id="selectedCatalogPoster"' in customer_html
+    assert 'id="requestSeasonSelect"' in customer_html
+    assert 'id="episodeResults" class="episode-results"' in customer_html
+    assert 'id="requestTitle" placeholder="e.g. Derry Girls"' in customer_html
     assert 'id="requestSeason" placeholder="S1"' in customer_html
     assert 'id="requestEpisode" placeholder="E1"' in customer_html
     assert 'id="requestUrl" type="url"' in customer_html
     assert 'id="requestUrl" type="url" required' not in customer_html
-    assert "Title: ${title}" in customer_script
-    assert "video_url: $(\"requestUrl\").value.trim()" in customer_script
+    assert "/api/catalog/search" in customer_script
+    assert "/api/catalog/tv/${seriesId}" in customer_script
+    assert "still_url" in customer_script
+    assert "TMDB ID: ${tmdbId}" in customer_script
 
 
-def test_customer_portal_uses_mobile_readable_form_controls() -> None:
+def test_customer_portal_includes_required_tmdb_and_justwatch_attribution() -> None:
+    customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
+    tmdb_notice = "This product uses the TMDB API but is not endorsed or certified by TMDB."
+
+    assert tmdb_notice in customer_html
+    assert "Streaming availability data by JustWatch." in customer_html
+    assert 'alt="TMDB"' in customer_html
+
+
+def test_customer_portal_uses_mobile_readable_visual_cards() -> None:
     styles = (PORTAL / "styles.css").read_text(encoding="utf-8")
+    catalog_styles = (PORTAL / "catalog.css").read_text(encoding="utf-8")
 
     assert "font-size:16px" in styles
     assert "@media (max-width:760px)" in styles
     assert ".submit-row .primary-action { width:100%" in styles
+    assert ".catalog-results" in catalog_styles
+    assert "aspect-ratio:2/3" in catalog_styles
+    assert ".episode-card" in catalog_styles
+    assert "aspect-ratio:16/9" in catalog_styles
 
 
 def test_portal_assets_are_not_cached_between_deployments() -> None:
@@ -153,7 +174,8 @@ def test_portal_assets_are_not_cached_between_deployments() -> None:
     customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
 
     assert 'response.headers["Cache-Control"] = "no-store"' in main_source
-    assert 'customer.js?v=20260818-2' in customer_html
+    assert '/portal-assets/catalog.css' in customer_html
+    assert 'customer.js?v=20260818-3' in customer_html
 
 
 def test_admin_can_securely_set_or_reset_own_password() -> None:

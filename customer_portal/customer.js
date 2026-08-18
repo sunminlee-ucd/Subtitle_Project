@@ -3,6 +3,12 @@
   const client = new PortalSupabase.PortalSupabaseClient(CUSTOMER_APP_CONFIG);
   const $ = (id) => document.getElementById(id);
   let user = null;
+  let manualMode = false;
+  let selectedCatalog = null;
+  let selectedSeason = null;
+  let selectedEpisode = null;
+  let catalogAbortController = null;
+  let catalogSearchTimer = null;
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -13,6 +19,7 @@
     const video = params.get("video") || "";
     $("requestUrl").value = video;
     $("reportUrl").value = video;
+    setRequestMode();
     const session = client.isConfigured() ? await client.validSession() : null;
     await setSession(session);
     showView(params.get("view") || "request");
@@ -24,6 +31,18 @@
     $("signOut").addEventListener("click", signOut);
     $("requestForm").addEventListener("submit", submitRequest);
     $("reportForm").addEventListener("submit", submitReport);
+    $("requestProvider").addEventListener("change", handleProviderChange);
+    $("catalogSearchButton").addEventListener("click", searchCatalog);
+    $("requestCatalogQuery").addEventListener("input", scheduleCatalogSearch);
+    $("requestCatalogQuery").addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      searchCatalog();
+    });
+    $("changeCatalogTitle").addEventListener("click", clearCatalogSelection);
+    $("requestSeasonSelect").addEventListener("change", loadEpisodesForSelectedSeason);
+    $("manualRequestToggle").addEventListener("click", showManualRequest);
+    $("returnToCatalog").addEventListener("click", showCatalogRequest);
     $("requestSeason").addEventListener("blur", () => normalizeCodeField($("requestSeason"), "S"));
     $("requestEpisode").addEventListener("blur", () => normalizeCodeField($("requestEpisode"), "E"));
     document.querySelectorAll("[data-view]").forEach((button) =>
@@ -90,19 +109,329 @@
     }
   }
 
+  function handleProviderChange() {
+    manualMode = false;
+    resetCatalogState();
+    setRequestMode();
+    if (catalogEnabled()) {
+      $("requestCatalogQuery").focus();
+    }
+  }
+
+  function setRequestMode() {
+    const useCatalog = catalogEnabled() && !manualMode;
+    $("catalogRequestFields").hidden = !useCatalog;
+    $("manualRequestFields").hidden = useCatalog;
+    $("returnToCatalog").hidden = !catalogEnabled();
+    if (!catalogEnabled()) {
+      manualMode = true;
+      $("manualRequestFields").hidden = false;
+    }
+  }
+
+  function catalogEnabled() {
+    return ["netflix", "disney"].includes($("requestProvider").value);
+  }
+
+  function scheduleCatalogSearch() {
+    window.clearTimeout(catalogSearchTimer);
+    const query = $("requestCatalogQuery").value.trim();
+    if (query.length < 2) {
+      setCatalogStatus("");
+      $("catalogResults").replaceChildren();
+      return;
+    }
+    catalogSearchTimer = window.setTimeout(searchCatalog, 450);
+  }
+
+  async function searchCatalog() {
+    if (!catalogEnabled()) return;
+    const query = $("requestCatalogQuery").value.trim();
+    if (query.length < 2) {
+      setCatalogStatus("Enter at least 2 characters to search.", true);
+      return;
+    }
+    if (catalogAbortController) catalogAbortController.abort();
+    catalogAbortController = new AbortController();
+    resetCatalogState({ keepQuery: true });
+    const provider = $("requestProvider").value;
+    setCatalogStatus(`Searching ${providerLabel(provider)} in Ireland…`);
+    try {
+      const data = await fetchCatalogJson(
+        `/api/catalog/search?q=${encodeURIComponent(query)}&provider=${encodeURIComponent(provider)}`,
+        catalogAbortController.signal
+      );
+      renderCatalogResults(data.results || []);
+      setCatalogStatus(
+        data.results?.length
+          ? `Choose the matching title from ${data.results.length} result${data.results.length === 1 ? "" : "s"}.`
+          : `No matching ${providerLabel(provider)} titles were found in Ireland. You can enter it manually.`,
+        !data.results?.length
+      );
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      setCatalogStatus(error.message, true);
+      if (/not configured/i.test(error.message)) {
+        showManualRequest();
+        setStatus("Catalogue search is not configured on the server yet. Manual title entry is available.");
+      }
+    }
+  }
+
+  function renderCatalogResults(results) {
+    const container = $("catalogResults");
+    container.replaceChildren();
+    for (const result of results) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "catalog-result";
+      card.setAttribute("aria-label", `Select ${result.title}`);
+
+      const poster = createImageBox("catalog-result-poster", result.poster_url, result.title, "No poster");
+      const copy = document.createElement("div");
+      copy.className = "catalog-result-copy";
+      const title = document.createElement("strong");
+      title.textContent = result.title;
+      const meta = document.createElement("span");
+      meta.textContent = [result.media_type === "tv" ? "TV series" : "Movie", result.year]
+        .filter(Boolean)
+        .join(" · ");
+      copy.append(title, meta);
+      if (result.overview) {
+        const overview = document.createElement("p");
+        overview.textContent = result.overview;
+        copy.append(overview);
+      }
+      card.append(poster, copy);
+      card.addEventListener("click", () => selectCatalogResult(result));
+      container.append(card);
+    }
+  }
+
+  async function selectCatalogResult(result) {
+    selectedCatalog = result;
+    selectedSeason = null;
+    selectedEpisode = null;
+    $("catalogResults").replaceChildren();
+    $("requestCatalogQuery").value = result.title;
+    renderSelectedCatalog();
+    setCatalogStatus("");
+    if (result.media_type === "tv") {
+      $("tvSelection").hidden = false;
+      await loadSeasons(result.id);
+    } else {
+      $("tvSelection").hidden = true;
+    }
+  }
+
+  function renderSelectedCatalog() {
+    const card = $("selectedCatalog");
+    card.hidden = !selectedCatalog;
+    if (!selectedCatalog) return;
+    const poster = $("selectedCatalogPoster");
+    poster.replaceChildren();
+    const imageBox = createImageBox(
+      "selected-catalog-image",
+      selectedCatalog.poster_url,
+      selectedCatalog.title,
+      "No poster"
+    );
+    while (imageBox.firstChild) poster.append(imageBox.firstChild);
+    $("selectedCatalogTitle").textContent = selectedCatalog.title;
+    $("selectedCatalogMeta").textContent = [
+      selectedCatalog.media_type === "tv" ? "TV series" : "Movie",
+      selectedCatalog.year,
+      `${providerLabel($("requestProvider").value)} · Ireland`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  async function loadSeasons(seriesId) {
+    const select = $("requestSeasonSelect");
+    select.replaceChildren(new Option("Loading seasons…", ""));
+    select.disabled = true;
+    $("episodeResults").replaceChildren();
+    try {
+      const data = await fetchCatalogJson(`/api/catalog/tv/${seriesId}`);
+      select.replaceChildren(new Option("Choose a season", ""));
+      for (const season of data.seasons || []) {
+        const label = `S${season.season_number} · ${season.name}${
+          season.episode_count ? ` · ${season.episode_count} episodes` : ""
+        }`;
+        select.add(new Option(label, String(season.season_number)));
+      }
+      if (!(data.seasons || []).length) {
+        setCatalogStatus("No regular seasons were returned for this title. You can use manual entry.", true);
+      }
+    } catch (error) {
+      select.replaceChildren(new Option("Unable to load seasons", ""));
+      setCatalogStatus(error.message, true);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  async function loadEpisodesForSelectedSeason() {
+    const seasonNumber = Number($("requestSeasonSelect").value);
+    selectedSeason = seasonNumber > 0 ? seasonNumber : null;
+    selectedEpisode = null;
+    updateEpisodeSelectionLabel();
+    const container = $("episodeResults");
+    container.replaceChildren();
+    if (!selectedCatalog || !selectedSeason) return;
+
+    const loading = document.createElement("p");
+    loading.className = "catalog-status";
+    loading.textContent = "Loading episodes…";
+    container.append(loading);
+    try {
+      const data = await fetchCatalogJson(
+        `/api/catalog/tv/${selectedCatalog.id}/season/${selectedSeason}`
+      );
+      renderEpisodes(data.episodes || []);
+      if (!(data.episodes || []).length) {
+        setCatalogStatus("No episodes were returned for this season. You can use manual entry.", true);
+      } else {
+        setCatalogStatus("Choose the exact episode below.");
+      }
+    } catch (error) {
+      container.replaceChildren();
+      setCatalogStatus(error.message, true);
+    }
+  }
+
+  function renderEpisodes(episodes) {
+    const container = $("episodeResults");
+    container.replaceChildren();
+    for (const episode of episodes) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "episode-card";
+      card.setAttribute("aria-label", `Select E${episode.episode_number} ${episode.name}`);
+      const still = createImageBox(
+        "episode-still",
+        episode.still_url,
+        `E${episode.episode_number} ${episode.name}`,
+        `E${episode.episode_number}`
+      );
+      const copy = document.createElement("div");
+      copy.className = "episode-copy";
+      const title = document.createElement("strong");
+      title.textContent = `E${episode.episode_number} · ${episode.name}`;
+      const meta = document.createElement("span");
+      meta.textContent = episode.air_date || `Season ${selectedSeason}`;
+      copy.append(title, meta);
+      if (episode.overview) {
+        const overview = document.createElement("p");
+        overview.textContent = episode.overview;
+        copy.append(overview);
+      }
+      card.append(still, copy);
+      card.addEventListener("click", () => {
+        selectedEpisode = episode;
+        container.querySelectorAll(".episode-card").forEach((item) => item.classList.remove("active"));
+        card.classList.add("active");
+        updateEpisodeSelectionLabel();
+        setCatalogStatus("");
+      });
+      container.append(card);
+    }
+  }
+
+  function updateEpisodeSelectionLabel() {
+    const label = $("episodeSelectionLabel");
+    if (!selectedEpisode) {
+      label.hidden = true;
+      label.textContent = "";
+      return;
+    }
+    label.hidden = false;
+    label.textContent = `Selected · S${selectedSeason} E${selectedEpisode.episode_number}`;
+  }
+
+  function clearCatalogSelection() {
+    resetCatalogState({ keepQuery: true });
+    $("requestCatalogQuery").select();
+    setCatalogStatus("Search again and choose the correct title.");
+  }
+
+  function resetCatalogState({ keepQuery = false } = {}) {
+    selectedCatalog = null;
+    selectedSeason = null;
+    selectedEpisode = null;
+    if (!keepQuery) $("requestCatalogQuery").value = "";
+    $("catalogResults").replaceChildren();
+    $("selectedCatalog").hidden = true;
+    $("selectedCatalogPoster").replaceChildren();
+    $("tvSelection").hidden = true;
+    $("requestSeasonSelect").replaceChildren(new Option("Choose a season", ""));
+    $("episodeResults").replaceChildren();
+    updateEpisodeSelectionLabel();
+    setCatalogStatus("");
+  }
+
+  function showManualRequest() {
+    manualMode = true;
+    resetCatalogState({ keepQuery: true });
+    setRequestMode();
+    if ($("requestCatalogQuery").value.trim() && !$("requestTitle").value.trim()) {
+      $("requestTitle").value = $("requestCatalogQuery").value.trim();
+    }
+    $("requestTitle").focus();
+  }
+
+  function showCatalogRequest() {
+    if (!catalogEnabled()) return;
+    manualMode = false;
+    setRequestMode();
+    $("requestCatalogQuery").focus();
+  }
+
+  async function fetchCatalogJson(url, signal = undefined) {
+    const response = await fetch(url, { signal, cache: "no-store", headers: { Accept: "application/json" } });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    if (!response.ok) {
+      throw new Error(payload?.detail || "Catalogue search is temporarily unavailable.");
+    }
+    return payload;
+  }
+
+  function createImageBox(className, url, alt, fallbackText) {
+    const box = document.createElement("div");
+    box.className = className;
+    if (url) {
+      const image = document.createElement("img");
+      image.src = url;
+      image.alt = alt;
+      image.loading = "lazy";
+      image.decoding = "async";
+      box.append(image);
+    } else {
+      const placeholder = document.createElement("span");
+      placeholder.className = "catalog-image-placeholder";
+      placeholder.textContent = fallbackText;
+      box.append(placeholder);
+    }
+    return box;
+  }
+
   async function submitRequest(event) {
     event.preventDefault();
     const form = event.currentTarget;
-    normalizeCodeField($("requestSeason"), "S");
-    normalizeCodeField($("requestEpisode"), "E");
     try {
-      const title = $("requestTitle").value.trim();
-      const season = $("requestSeason").value.trim();
-      const episode = $("requestEpisode").value.trim();
+      const details = requestDetailsForSubmission();
+      if (!details.title) throw new Error("Choose a title or enter one manually.");
+      if (details.mediaType === "tv" && (!details.season || !details.episode)) {
+        throw new Error("Choose both a season and an episode for a TV series.");
+      }
       const notes = serializeRequestDetails({
-        title,
-        season,
-        episode,
+        ...details,
         notes: $("requestNotes").value.trim(),
       });
       await client.insert("video_requests", {
@@ -113,11 +442,45 @@
         notes,
       });
       form.reset();
+      manualMode = false;
+      resetCatalogState();
+      setRequestMode();
       setStatus("Your request was sent. We’ll keep it in My history for you.");
       await loadHistory();
     } catch (error) {
       setStatus(error.message);
     }
+  }
+
+  function requestDetailsForSubmission() {
+    if (catalogEnabled() && !manualMode) {
+      if (!selectedCatalog) return { title: "" };
+      return {
+        title: selectedCatalog.title,
+        catalog: "TMDB",
+        tmdbId: String(selectedCatalog.id),
+        mediaType: selectedCatalog.media_type,
+        year: selectedCatalog.year || "",
+        season: selectedCatalog.media_type === "tv" && selectedSeason ? `S${selectedSeason}` : "",
+        episode:
+          selectedCatalog.media_type === "tv" && selectedEpisode
+            ? `E${selectedEpisode.episode_number}`
+            : "",
+        episodeTitle: selectedEpisode?.name || "",
+      };
+    }
+    normalizeCodeField($("requestSeason"), "S");
+    normalizeCodeField($("requestEpisode"), "E");
+    return {
+      title: $("requestTitle").value.trim(),
+      catalog: "Manual",
+      tmdbId: "",
+      mediaType: "",
+      year: "",
+      season: $("requestSeason").value.trim(),
+      episode: $("requestEpisode").value.trim(),
+      episodeTitle: "",
+    };
   }
 
   async function submitReport(event) {
@@ -158,12 +521,19 @@
       const items = [
         ...(requests || []).map((row) => {
           const details = parseRequestDetails(row.notes);
-          const location = [details.season, details.episode].filter(Boolean).join(" · ");
+          const location = [details.season, details.episode, details.episodeTitle]
+            .filter(Boolean)
+            .join(" · ");
           const provider = providerLabel(row.provider);
           return {
             date: row.created_at,
             title: `${details.title || "Video request"} · ${row.requested_language}`,
-            detail: [provider, location, row.video_url ? "Streaming link included" : "Title-based request"]
+            detail: [
+              provider,
+              location,
+              details.catalog === "TMDB" ? "Catalogue selection" : "Manual request",
+              row.video_url ? "Share link included" : "",
+            ]
               .filter(Boolean)
               .join(" · "),
             status: row.status,
@@ -205,11 +575,26 @@
     input.value = /^\d+$/.test(value) ? `${prefix}${value}` : value;
   }
 
-  function serializeRequestDetails({ title, season, episode, notes }) {
+  function serializeRequestDetails({
+    title,
+    catalog,
+    tmdbId,
+    mediaType,
+    year,
+    season,
+    episode,
+    episodeTitle,
+    notes,
+  }) {
     return [
       `Title: ${title}`,
+      catalog ? `Catalog: ${catalog}` : "",
+      tmdbId ? `TMDB ID: ${tmdbId}` : "",
+      mediaType ? `Media type: ${mediaType}` : "",
+      year ? `Year: ${year}` : "",
       season ? `Season: ${season}` : "",
       episode ? `Episode: ${episode}` : "",
+      episodeTitle ? `Episode title: ${episodeTitle}` : "",
       notes ? `Notes: ${notes}` : "",
     ]
       .filter(Boolean)
@@ -217,11 +602,33 @@
   }
 
   function parseRequestDetails(raw) {
-    const details = { title: "", season: "", episode: "", notes: "" };
+    const details = {
+      title: "",
+      catalog: "",
+      tmdbId: "",
+      mediaType: "",
+      year: "",
+      season: "",
+      episode: "",
+      episodeTitle: "",
+      notes: "",
+    };
+    const keyMap = {
+      title: "title",
+      catalog: "catalog",
+      "tmdb id": "tmdbId",
+      "media type": "mediaType",
+      year: "year",
+      season: "season",
+      episode: "episode",
+      "episode title": "episodeTitle",
+      notes: "notes",
+    };
     for (const line of String(raw || "").split(/\r?\n/)) {
-      const match = line.match(/^(Title|Season|Episode|Notes):\s*(.*)$/i);
+      const match = line.match(/^([^:]+):\s*(.*)$/);
       if (!match) continue;
-      details[match[1].toLowerCase()] = match[2].trim();
+      const key = keyMap[match[1].trim().toLowerCase()];
+      if (key) details[key] = match[2].trim();
     }
     return details;
   }
@@ -244,6 +651,12 @@
     const params = new URLSearchParams(location.search);
     params.set("view", selected);
     history.replaceState(null, "", `${location.pathname}?${params}`);
+  }
+
+  function setCatalogStatus(message, isError = false) {
+    const status = $("catalogStatus");
+    status.textContent = message;
+    status.classList.toggle("error", isError);
   }
 
   function setStatus(message) {
