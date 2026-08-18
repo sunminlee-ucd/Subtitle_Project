@@ -8,9 +8,9 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -21,7 +21,6 @@ from app.csv_subtitles import (
     target_column_for_language,
 )
 from app.srt import SrtParseError, parse_srt
-from app.tmdb_catalog import TmdbCatalog, TmdbCatalogError
 from app.translator import EchoTranslator, OpenAITranslator, SubtitleTranslator, TranslationError
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -70,19 +69,6 @@ def get_translator(settings: Annotated[Settings, Depends(get_settings)]) -> Subt
     )
 
 
-def get_tmdb_catalog(settings: Annotated[Settings, Depends(get_settings)]) -> TmdbCatalog:
-    if not settings.tmdb_api_token:
-        raise HTTPException(
-            status_code=503,
-            detail="TMDB catalog search is not configured yet. Use manual title entry for now.",
-        )
-    return TmdbCatalog(
-        settings.tmdb_api_token,
-        region=settings.tmdb_region,
-        language=settings.tmdb_language,
-    )
-
-
 @app.get("/", include_in_schema=False)
 async def index() -> RedirectResponse:
     return RedirectResponse(url="/customer?view=request", status_code=307)
@@ -107,49 +93,7 @@ async def health(settings: Annotated[Settings, Depends(get_settings)]) -> dict[s
         "model": settings.openai_model,
         "review_model": settings.openai_review_model,
         "translation_ready": str(configured).lower(),
-        "catalog_ready": str(bool(settings.tmdb_api_token)).lower(),
-        "catalog_region": settings.tmdb_region,
     }
-
-
-@app.get("/api/catalog/search")
-async def catalog_search(
-    q: Annotated[str, Query(min_length=2, max_length=80)],
-    provider: Literal["netflix", "disney"],
-    catalog: Annotated[TmdbCatalog, Depends(get_tmdb_catalog)],
-) -> dict[str, object]:
-    try:
-        results = await catalog.search(q, provider)
-    except TmdbCatalogError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return {"results": results}
-
-
-@app.get("/api/catalog/tv/{series_id}")
-async def catalog_tv_seasons(
-    series_id: int,
-    catalog: Annotated[TmdbCatalog, Depends(get_tmdb_catalog)],
-) -> dict[str, object]:
-    if series_id <= 0:
-        raise HTTPException(status_code=422, detail="Invalid TMDB series ID.")
-    try:
-        return await catalog.tv_seasons(series_id)
-    except TmdbCatalogError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-
-@app.get("/api/catalog/tv/{series_id}/season/{season_number}")
-async def catalog_season_episodes(
-    series_id: int,
-    season_number: int,
-    catalog: Annotated[TmdbCatalog, Depends(get_tmdb_catalog)],
-) -> dict[str, object]:
-    if series_id <= 0 or season_number <= 0:
-        raise HTTPException(status_code=422, detail="Invalid TMDB season selection.")
-    try:
-        return await catalog.season_episodes(series_id, season_number)
-    except TmdbCatalogError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @app.post("/api/translations", response_class=StreamingResponse)
