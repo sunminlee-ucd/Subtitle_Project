@@ -1,16 +1,16 @@
 name: Patch processor API key source
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/processor-txt-api-key-only
+      - master
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: ${{ !contains(github.event.head_commit.message, '[api-key-file-only]') }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -26,10 +26,12 @@ jobs:
 
           path = Path("desktop/subtitle_processor.py")
           text = path.read_text(encoding="utf-8")
-
           old_init = '        self.api_key = tk.StringVar(value=os.getenv("OPENAI_API_KEY", ""))\n'
+
           if old_init not in text:
-              raise SystemExit("Expected OPENAI_API_KEY initializer was not found")
+              print("Processor is already patched; nothing to do.")
+              raise SystemExit(0)
+
           text = text.replace(old_init, "", 1)
 
           old_ui = '''        ttk.Label(frame, text="API key override (optional)").grid(
@@ -68,7 +70,6 @@ jobs:
           if old_key not in text:
               raise SystemExit("Expected API key override selection block was not found")
           text = text.replace(old_key, new_key, 1)
-
           path.write_text(text, encoding="utf-8")
 
           readme = Path("README.md")
@@ -98,6 +99,10 @@ jobs:
       - name: Commit patched source
         shell: bash
         run: |
+          if git diff --quiet -- desktop/subtitle_processor.py README.md; then
+            echo "No source changes to commit."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add desktop/subtitle_processor.py README.md
