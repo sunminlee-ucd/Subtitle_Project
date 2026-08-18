@@ -19,7 +19,10 @@ def test_admin_request_can_prepare_customer_for_access_grant() -> None:
     assert 'pendingGrantCustomerId=row.customer_id||""' in source
     assert '$("grantCustomer").value=pendingGrantCustomerId' in source
     assert 'subtitle_grants' in source
-    assert '"Access granted. The subtitle is now available to this customer in authorized clients."' in source
+    granted_message = (
+        '"Access granted. The subtitle is now available to this customer in authorized clients."'
+    )
+    assert granted_message in source
 
 
 def test_admin_upload_still_uses_private_storage_before_grant() -> None:
