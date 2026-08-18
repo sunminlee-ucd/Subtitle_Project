@@ -71,7 +71,7 @@ def get_translator(settings: Annotated[Settings, Depends(get_settings)]) -> Subt
 
 @app.get("/", include_in_schema=False)
 async def index() -> RedirectResponse:
-    return RedirectResponse(url="/customer", status_code=307)
+    return RedirectResponse(url="/customer?view=request", status_code=307)
 
 
 @app.get("/customer", include_in_schema=False)
