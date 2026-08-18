@@ -116,7 +116,7 @@ def test_customer_srt_parser_with_node() -> None:
 def test_public_root_redirects_to_customer_portal() -> None:
     main_source = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
 
-    assert 'RedirectResponse(url="/customer", status_code=307)' in main_source
+    assert 'RedirectResponse(url="/customer?view=request", status_code=307)' in main_source
     assert 'app.mount("/static"' not in main_source
 
 
