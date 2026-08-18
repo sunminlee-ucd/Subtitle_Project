@@ -149,8 +149,9 @@ def test_request_form_supports_visual_tmdb_selection_and_manual_fallback() -> No
 
 def test_customer_portal_includes_required_tmdb_and_justwatch_attribution() -> None:
     customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
+    tmdb_notice = "This product uses the TMDB API but is not endorsed or certified by TMDB."
 
-    assert "This product uses the TMDB API but is not endorsed or certified by TMDB." in customer_html
+    assert tmdb_notice in customer_html
     assert "Streaming availability data by JustWatch." in customer_html
     assert 'alt="TMDB"' in customer_html
 
