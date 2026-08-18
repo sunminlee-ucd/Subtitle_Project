@@ -20,7 +20,10 @@ class TxtKeySubtitleProcessorApp(base.SubtitleProcessorApp):
 
     def _lock_api_key_override_ui(self) -> None:
         for widget in _walk_widgets(self.root):
-            if isinstance(widget, ttk.Label) and widget.cget("text") == "API key override (optional)":
+            if (
+                isinstance(widget, ttk.Label)
+                and widget.cget("text") == "API key override (optional)"
+            ):
                 widget.configure(text="API key source")
             if isinstance(widget, ttk.Entry) and widget.cget("textvariable") == str(self.api_key):
                 widget.configure(state="disabled", show="")
