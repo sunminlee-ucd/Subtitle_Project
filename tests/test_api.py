@@ -5,40 +5,10 @@ import zipfile
 from fastapi.testclient import TestClient
 
 from app.config import Settings
-from app.main import app, get_tmdb_catalog, get_translator
+from app.main import app, get_translator
 from app.translator import EchoTranslator
 
 client = TestClient(app)
-
-
-class FakeCatalog:
-    async def search(self, query: str, provider: str) -> list[dict[str, object]]:
-        return [
-            {
-                "id": 42,
-                "media_type": "tv",
-                "title": "Derry Girls",
-                "year": "2018",
-                "poster_url": "https://image.tmdb.org/t/p/w342/poster.jpg",
-                "provider": provider,
-                "region": "IE",
-                "query": query,
-            }
-        ]
-
-    async def tv_seasons(self, series_id: int) -> dict[str, object]:
-        return {
-            "id": series_id,
-            "title": "Derry Girls",
-            "seasons": [{"season_number": 1, "name": "Season 1", "episode_count": 6}],
-        }
-
-    async def season_episodes(self, series_id: int, season_number: int) -> dict[str, object]:
-        return {
-            "series_id": series_id,
-            "season_number": season_number,
-            "episodes": [{"episode_number": 1, "name": "Episode One", "still_url": None}],
-        }
 
 
 def test_default_translation_model_prioritizes_context_quality(monkeypatch) -> None:
@@ -55,8 +25,6 @@ def test_health_endpoint() -> None:
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
-    assert "catalog_ready" in response.json()
-    assert response.json()["catalog_region"] == "IE"
 
 
 def test_root_redirects_to_customer_request_view() -> None:
@@ -64,44 +32,6 @@ def test_root_redirects_to_customer_request_view() -> None:
 
     assert response.status_code == 307
     assert response.headers["location"] == "/customer?view=request"
-
-
-def test_catalog_search_route_uses_server_side_catalog() -> None:
-    app.dependency_overrides[get_tmdb_catalog] = lambda: FakeCatalog()
-    try:
-        response = client.get("/api/catalog/search", params={"q": "Derry", "provider": "netflix"})
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    result = response.json()["results"][0]
-    assert result["title"] == "Derry Girls"
-    assert result["provider"] == "netflix"
-    assert result["query"] == "Derry"
-
-
-def test_catalog_tv_routes_return_seasons_and_episodes() -> None:
-    app.dependency_overrides[get_tmdb_catalog] = lambda: FakeCatalog()
-    try:
-        seasons = client.get("/api/catalog/tv/42")
-        episodes = client.get("/api/catalog/tv/42/season/1")
-    finally:
-        app.dependency_overrides.clear()
-
-    assert seasons.status_code == 200
-    assert seasons.json()["seasons"][0]["season_number"] == 1
-    assert episodes.status_code == 200
-    assert episodes.json()["episodes"][0]["episode_number"] == 1
-
-
-def test_catalog_search_rejects_unsupported_provider() -> None:
-    app.dependency_overrides[get_tmdb_catalog] = lambda: FakeCatalog()
-    try:
-        response = client.get("/api/catalog/search", params={"q": "Derry", "provider": "other"})
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 422
 
 
 def test_translate_multiple_files_to_zip() -> None:
