@@ -5,6 +5,7 @@
   let user = null;
   let profiles = [];
   let tracks = [];
+  let pendingGrantCustomerId = "";
 
   document.addEventListener("DOMContentLoaded", init);
   async function init() {
@@ -85,6 +86,7 @@
   function renderSelectors() {
     const customer=$("grantCustomer"); customer.replaceChildren();
     profiles.forEach((profile)=>customer.add(new Option(`${profile.display_name||profile.email} · ${profile.email}`,profile.id)));
+    if(pendingGrantCustomerId && profiles.some((profile)=>profile.id===pendingGrantCustomerId)) customer.value=pendingGrantCustomerId;
     const track=$("grantTrack"); track.replaceChildren();
     tracks.forEach((row)=>{ const video=Array.isArray(row.video)?row.video[0]:row.video; track.add(new Option(`${video?.title||"Untitled"} ${video?.episode_label||""} · ${row.language_name} (${row.cue_count})`,row.id)); });
   }
@@ -108,7 +110,7 @@
       const storagePath=`${track.id}.srt`;
       await client.uploadStorage("subtitle-files",storagePath,new Blob([srt],{type:"application/x-subrip"}),"application/x-subrip");
       await client.update("subtitle_tracks",{storage_path:storagePath},`id=eq.${encodeURIComponent(track.id)}`);
-      startNewSubtitle(); await loadDashboard(); setStatus(`${cues.length} subtitle lines saved to private storage. The item is visible in the library below.`);
+      startNewSubtitle(); await loadDashboard(); setStatus(`${cues.length} subtitle lines saved to private storage. Select the customer and subtitle below, then grant access.`);
     } catch (error) { setStatus(error.message); }
   }
   function parseSrt(raw) {
@@ -117,9 +119,12 @@
     if(!cues.length)throw new Error("No valid subtitle lines were found in the SRT file."); return cues;
   }
   function seconds(value){const [h,m,tail]=value.replace(",",".").split(":");return Number(h)*3600+Number(m)*60+Number(tail);}
-  async function grantAccess(){try{await client.upsert("subtitle_grants",{customer_id:$("grantCustomer").value,subtitle_track_id:$("grantTrack").value,granted_by:user.id},"on_conflict=customer_id,subtitle_track_id");setStatus("Access granted.");await loadDashboard();}catch(error){setStatus(error.message);}}
+  async function grantAccess(){try{await client.upsert("subtitle_grants",{customer_id:$("grantCustomer").value,subtitle_track_id:$("grantTrack").value,granted_by:user.id},"on_conflict=customer_id,subtitle_track_id");pendingGrantCustomerId=$("grantCustomer").value;setStatus("Access granted. The subtitle is now available to this customer in authorized clients.");await loadDashboard();}catch(error){setStatus(error.message);}}
   async function revokeAccess(){try{await client.remove("subtitle_grants",`customer_id=eq.${encodeURIComponent($("grantCustomer").value)}&subtitle_track_id=eq.${encodeURIComponent($("grantTrack").value)}`);setStatus("Access revoked.");await loadDashboard();}catch(error){setStatus(error.message);}}
   function renderGrants(rows){const list=$("grants");list.replaceChildren();for(const row of rows||[]){const profile=profiles.find((item)=>item.id===row.customer_id);const track=tracks.find((item)=>item.id===row.subtitle_track_id);const video=Array.isArray(track?.video)?track.video[0]:track?.video;const item=document.createElement("div");item.className="list-item";item.textContent=`${profile?.email||row.customer_id} → ${video?.title||"Unknown"} · ${track?.language_name||row.subtitle_track_id}`;list.append(item);}if(!rows?.length)list.textContent="No customer access has been granted yet.";}
-  function renderCases(container,rows,table,statuses){container.replaceChildren();for(const row of rows||[]){const item=document.createElement("article");item.className="list-item";const title=document.createElement("strong");title.textContent=table==="video_requests"?`${row.provider} · ${row.requested_language}`:`${row.category}${row.cue_time_seconds!=null?` · ${row.cue_time_seconds}s`:""}`;const text=document.createElement("p");text.textContent=row.notes||row.message||row.video_url;const select=document.createElement("select");statuses.forEach((status)=>select.add(new Option(status,status,status===row.status,status===row.status)));select.addEventListener("change",async()=>{try{await client.update(table,{status:select.value},`id=eq.${encodeURIComponent(row.id)}`);setStatus("Status updated.");}catch(error){setStatus(error.message);}});item.append(title,text,select);container.append(item);}if(!rows?.length)container.textContent="Nothing waiting.";}
+  function parseRequestDetails(raw){const details={title:"",season:"",episode:""};for(const line of String(raw||"").split(/\r?\n/)){const match=line.match(/^(Title|Season|Episode):\s*(.*)$/i);if(match)details[match[1].toLowerCase()]=match[2].trim();}return details;}
+  function customerLabel(customerId){const profile=profiles.find((item)=>item.id===customerId);return profile?.display_name?`${profile.display_name} · ${profile.email}`:profile?.email||customerId||"Unknown customer";}
+  function prepareAccessForRequest(row){pendingGrantCustomerId=row.customer_id||"";if(pendingGrantCustomerId)$("grantCustomer").value=pendingGrantCustomerId;const details=parseRequestDetails(row.notes);const requested=[details.title,details.season,details.episode].filter(Boolean).join(" · ")||"this request";setStatus(`Prepared ${customerLabel(row.customer_id)} for access. Upload ${requested}, then choose the saved subtitle and click Grant access.`);$("trackForm").scrollIntoView({behavior:"smooth",block:"start"});}
+  function renderCases(container,rows,table,statuses){container.replaceChildren();for(const row of rows||[]){const item=document.createElement("article");item.className="list-item";const details=table==="video_requests"?parseRequestDetails(row.notes):null;const title=document.createElement("strong");title.textContent=table==="video_requests"?[details?.title||row.provider,details?.season,details?.episode,`· ${row.requested_language}`].filter(Boolean).join(" "):`${row.category}${row.cue_time_seconds!=null?` · ${row.cue_time_seconds}s`:""}`;const owner=document.createElement("small");owner.className="muted";owner.textContent=`Customer: ${customerLabel(row.customer_id)}`;const text=document.createElement("p");text.textContent=row.notes||row.message||row.video_url;const select=document.createElement("select");statuses.forEach((status)=>select.add(new Option(status,status,status===row.status,status===row.status)));select.addEventListener("change",async()=>{try{await client.update(table,{status:select.value},`id=eq.${encodeURIComponent(row.id)}`);setStatus("Status updated.");}catch(error){setStatus(error.message);}});item.append(title,owner,text);if(table==="video_requests"){const prepare=document.createElement("button");prepare.type="button";prepare.className="secondary";prepare.textContent="Prepare access";prepare.addEventListener("click",()=>prepareAccessForRequest(row));item.append(prepare);}item.append(select);container.append(item);}if(!rows?.length)container.textContent="Nothing waiting.";}
   function setStatus(message){$("status").textContent=message;}
 })();
