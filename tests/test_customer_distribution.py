@@ -127,12 +127,33 @@ def test_customer_forms_keep_a_stable_reference_across_async_requests() -> None:
     assert "event.currentTarget.reset()" not in source
 
 
+def test_request_form_supports_title_based_app_requests() -> None:
+    customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
+    customer_script = (PORTAL / "customer.js").read_text(encoding="utf-8")
+
+    assert 'id="requestTitle" required placeholder="e.g. Derry Girls"' in customer_html
+    assert 'id="requestSeason" placeholder="S1"' in customer_html
+    assert 'id="requestEpisode" placeholder="E1"' in customer_html
+    assert 'id="requestUrl" type="url"' in customer_html
+    assert 'id="requestUrl" type="url" required' not in customer_html
+    assert "Title: ${title}" in customer_script
+    assert "video_url: $(\"requestUrl\").value.trim()" in customer_script
+
+
+def test_customer_portal_uses_mobile_readable_form_controls() -> None:
+    styles = (PORTAL / "styles.css").read_text(encoding="utf-8")
+
+    assert "font-size:16px" in styles
+    assert "@media (max-width:760px)" in styles
+    assert ".submit-row .primary-action { width:100%" in styles
+
+
 def test_portal_assets_are_not_cached_between_deployments() -> None:
     main_source = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
     customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
 
     assert 'response.headers["Cache-Control"] = "no-store"' in main_source
-    assert 'customer.js?v=20260817-1' in customer_html
+    assert 'customer.js?v=20260818-2' in customer_html
 
 
 def test_admin_can_securely_set_or_reset_own_password() -> None:
