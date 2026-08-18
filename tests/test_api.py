@@ -27,6 +27,13 @@ def test_health_endpoint() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_root_redirects_to_customer_request_view() -> None:
+    response = client.get("/", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/customer?view=request"
+
+
 def test_translate_multiple_files_to_zip() -> None:
     app.dependency_overrides[get_translator] = lambda: EchoTranslator()
     sample = b"1\n00:00:01,000 --> 00:00:03,000\nHello\n"
