@@ -51,7 +51,15 @@ class TmdbCatalog:
                 if row.get("media_type") in {"movie", "tv"} and not row.get("adult", False)
             ][:12]
             availability = await asyncio.gather(
-                *(self._available_on(client, row["media_type"], int(row["id"]), provider) for row in candidates),
+                *(
+                    self._available_on(
+                        client,
+                        str(row["media_type"]),
+                        int(row["id"]),
+                        provider,
+                    )
+                    for row in candidates
+                ),
                 return_exceptions=True,
             )
 
@@ -60,20 +68,23 @@ class TmdbCatalog:
             if available is not True:
                 continue
             media_type = str(row["media_type"])
-            title = str(row.get("name") if media_type == "tv" else row.get("title") or "").strip()
+            title_value = row.get("name") if media_type == "tv" else row.get("title")
+            title = str(title_value or "").strip()
             if not title:
                 continue
-            date_value = str(
-                row.get("first_air_date") if media_type == "tv" else row.get("release_date") or ""
+            date_raw = (
+                row.get("first_air_date") if media_type == "tv" else row.get("release_date")
+            )
+            date_value = str(date_raw or "")
+            original_title_raw = (
+                row.get("original_name") if media_type == "tv" else row.get("original_title")
             )
             results.append(
                 {
                     "id": int(row["id"]),
                     "media_type": media_type,
                     "title": title,
-                    "original_title": str(
-                        row.get("original_name") if media_type == "tv" else row.get("original_title") or ""
-                    ).strip(),
+                    "original_title": str(original_title_raw or "").strip(),
                     "year": date_value[:4] if len(date_value) >= 4 else "",
                     "overview": str(row.get("overview") or "").strip(),
                     "poster_url": _image_url(row.get("poster_path"), "w342"),
@@ -157,7 +168,10 @@ class TmdbCatalog:
             *region.get("flatrate", []),
             *region.get("ads", []),
         ]
-        return any(_provider_matches(str(row.get("provider_name") or ""), provider) for row in provider_rows)
+        return any(
+            _provider_matches(str(row.get("provider_name") or ""), provider)
+            for row in provider_rows
+        )
 
     async def _get_json(
         self,
@@ -174,7 +188,10 @@ class TmdbCatalog:
             raise TmdbCatalogError(f"TMDB returned HTTP {status}.") from exc
         except httpx.HTTPError as exc:
             raise TmdbCatalogError("TMDB could not be reached.") from exc
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise TmdbCatalogError("TMDB returned invalid JSON.") from exc
         if not isinstance(payload, dict):
             raise TmdbCatalogError("TMDB returned an unexpected response.")
         return payload
