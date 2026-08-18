@@ -46,13 +46,13 @@
       <section class="hero-panel">
         <div>
           <div class="eyebrow">Personal subtitle support</div>
-          <h2>Request the subtitles you actually need.</h2>
-          <p>Tell us the title and language. A streaming link can help us identify the exact version, but it is optional.</p>
+          <h2>Find the exact title. Pick the exact episode.</h2>
+          <p>Search the catalogue, choose a season and episode, then tell us which subtitle language you need.</p>
         </div>
         <div class="trust-points" aria-label="Service benefits">
           <span>Private account</span>
+          <span>Visual title search</span>
           <span>Request tracking</span>
-          <span>Authorized subtitles only</span>
         </div>
       </section>
 
@@ -66,10 +66,10 @@
         <div class="section-heading">
           <div>
             <div class="eyebrow">New request</div>
-            <h2>Request a title</h2>
-            <p class="muted">Using the Netflix or Disney+ app? No problem. The title is enough to start.</p>
+            <h2>Choose what you want to watch</h2>
+            <p class="muted">Netflix and Disney+ requests can be selected from the TMDB catalogue. Availability is checked for Ireland.</p>
           </div>
-          <span class="step-badge">Usually under 1 minute</span>
+          <span class="step-badge">Search · Select · Request</span>
         </div>
 
         <form id="requestForm">
@@ -87,29 +87,76 @@
             </label>
           </div>
 
-          <label>Title
-            <input id="requestTitle" required placeholder="e.g. Derry Girls" autocomplete="off">
-            <span class="field-help">Use the title shown in your streaming app.</span>
-          </label>
+          <section id="catalogRequestFields" class="catalog-picker" aria-label="Title catalogue search">
+            <label>Search title
+              <div class="catalog-search-row">
+                <input id="requestCatalogQuery" type="search" placeholder="Try Derry Girls" autocomplete="off" aria-controls="catalogResults">
+                <button id="catalogSearchButton" type="button" class="secondary">Search</button>
+              </div>
+              <span class="field-help">Results only show titles listed for the selected streaming service in Ireland.</span>
+            </label>
+            <p id="catalogStatus" class="catalog-status" aria-live="polite"></p>
+            <div id="catalogResults" class="catalog-results" aria-live="polite"></div>
 
-          <div class="grid compact-grid">
-            <label>Season <span class="optional">optional</span>
-              <input id="requestSeason" placeholder="S1" maxlength="12" autocomplete="off">
-              <span class="field-help">Please use S1, S2, S3…</span>
+            <article id="selectedCatalog" class="selected-catalog" hidden>
+              <div id="selectedCatalogPoster" class="selected-catalog-poster" aria-hidden="true"></div>
+              <div class="selected-catalog-copy">
+                <div class="eyebrow">Selected title</div>
+                <h3 id="selectedCatalogTitle"></h3>
+                <p id="selectedCatalogMeta"></p>
+              </div>
+              <button id="changeCatalogTitle" type="button" class="quiet">Change</button>
+            </article>
+
+            <section id="tvSelection" class="tv-selection" hidden>
+              <label>Season
+                <select id="requestSeasonSelect">
+                  <option value="">Choose a season</option>
+                </select>
+              </label>
+              <div class="episode-picker-heading">
+                <div>
+                  <span class="field-label">Episode</span>
+                  <span class="field-help">Choose the exact episode. Episode cards include TMDB still images when available.</span>
+                </div>
+                <span id="episodeSelectionLabel" class="selection-pill" hidden></span>
+              </div>
+              <div id="episodeResults" class="episode-results"></div>
+            </section>
+
+            <button id="manualRequestToggle" type="button" class="manual-toggle">Can’t find it? Enter the title manually</button>
+          </section>
+
+          <section id="manualRequestFields" class="manual-fields" hidden>
+            <div class="manual-heading">
+              <div>
+                <div class="eyebrow">Manual request</div>
+                <strong>Enter the title exactly as it appears in your app.</strong>
+              </div>
+              <button id="returnToCatalog" type="button" class="quiet">Back to search</button>
+            </div>
+            <label>Title
+              <input id="requestTitle" placeholder="e.g. Derry Girls" autocomplete="off">
             </label>
-            <label>Episode <span class="optional">optional</span>
-              <input id="requestEpisode" placeholder="E1" maxlength="12" autocomplete="off">
-              <span class="field-help">Please use E1, E2, E3…</span>
-            </label>
-          </div>
+            <div class="grid compact-grid">
+              <label>Season <span class="optional">optional</span>
+                <input id="requestSeason" placeholder="S1" maxlength="12" autocomplete="off">
+                <span class="field-help">Please use S1, S2, S3…</span>
+              </label>
+              <label>Episode <span class="optional">optional</span>
+                <input id="requestEpisode" placeholder="E1" maxlength="12" autocomplete="off">
+                <span class="field-help">Please use E1, E2, E3…</span>
+              </label>
+            </div>
+          </section>
 
           <label>Streaming link <span class="optional">optional</span>
             <input id="requestUrl" type="url" placeholder="Paste a Netflix / Disney+ share link if you have one" inputmode="url">
-            <span class="field-help">No link available in the app? Leave this blank.</span>
+            <span class="field-help">The catalogue selection is normally enough. Add a share link only when it helps identify a specific version.</span>
           </label>
 
           <label>Notes <span class="optional">optional</span>
-            <textarea id="requestNotes" placeholder="Anything else that helps us identify the exact version"></textarea>
+            <textarea id="requestNotes" placeholder="Anything else that helps us with this request"></textarea>
           </label>
 
           <div class="submit-row">
@@ -143,9 +190,17 @@
     </section>
   </main>
 
-  <footer class="site-footer"><span>Subtitle Companion</span><span>Private access · Clear request tracking</span></footer>
+  <footer class="site-footer">
+    <div><span>Subtitle Companion</span><span>Private access · Clear request tracking</span></div>
+    <div class="data-attribution" aria-label="Catalogue data credits">
+      <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer" aria-label="TMDB">
+        <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg" alt="TMDB">
+      </a>
+      <span>This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming availability data by JustWatch.</span>
+    </div>
+  </footer>
   <script src="/portal-assets/config.js"></script>
   <script src="/portal-assets/supabase-client.js"></script>
-  <script src="/portal-assets/customer.js?v=20260818-2"></script>
+  <script src="/portal-assets/customer.js?v=20260818-3"></script>
 </body>
 </html>
