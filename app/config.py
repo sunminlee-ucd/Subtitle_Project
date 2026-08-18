@@ -21,6 +21,9 @@ class Settings:
     openai_model: str
     openai_review_model: str
     translation_provider: str
+    tmdb_api_token: str | None
+    tmdb_region: str
+    tmdb_language: str
     max_files: int
     max_file_size_bytes: int
     translation_batch_characters: int
@@ -33,6 +36,9 @@ class Settings:
             openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-terra"),
             openai_review_model=os.getenv("OPENAI_REVIEW_MODEL", "gpt-5.6-terra"),
             translation_provider=os.getenv("TRANSLATION_PROVIDER", "openai").lower(),
+            tmdb_api_token=os.getenv("TMDB_API_TOKEN") or None,
+            tmdb_region=(os.getenv("TMDB_REGION", "IE").strip().upper() or "IE"),
+            tmdb_language=(os.getenv("TMDB_LANGUAGE", "en-IE").strip() or "en-IE"),
             max_files=_positive_int("MAX_FILES", 20),
             max_file_size_bytes=_positive_int("MAX_FILE_SIZE_BYTES", 5 * 1024 * 1024),
             translation_batch_characters=_positive_int("TRANSLATION_BATCH_CHARACTERS", 8000),
