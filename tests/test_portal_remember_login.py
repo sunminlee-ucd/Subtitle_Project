@@ -69,3 +69,48 @@ def test_supabase_portal_client_javascript_is_valid() -> None:
         capture_output=True,
         text=True,
     )
+
+
+def test_session_storage_behavior_with_node() -> None:
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not available on PATH")
+
+    script = r"""
+function storage() {
+  const values = new Map();
+  return {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); },
+  };
+}
+global.localStorage = storage();
+global.sessionStorage = storage();
+global.location = { pathname: "/customer" };
+require(process.argv[1]);
+const Client = global.PortalSupabase.PortalSupabaseClient;
+const config = { SUPABASE_URL: "https://test.supabase.co", SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test" };
+const session = { access_token: "access", refresh_token: "refresh", expires_in: 3600, user: { id: "u" } };
+
+const customer = new Client(config);
+customer.saveSession(session, false);
+if (!sessionStorage.getItem("subtitlePortalCustomerSession")) process.exit(10);
+if (localStorage.getItem("subtitlePortalCustomerSession")) process.exit(11);
+customer.saveSession(session, true);
+if (!localStorage.getItem("subtitlePortalCustomerSession")) process.exit(12);
+if (sessionStorage.getItem("subtitlePortalCustomerSession")) process.exit(13);
+
+global.location.pathname = "/admin";
+const admin = new Client(config);
+admin.saveSession(session, true);
+if (!localStorage.getItem("subtitlePortalAdminSession")) process.exit(14);
+if (!localStorage.getItem("subtitlePortalCustomerSession")) process.exit(15);
+"""
+    subprocess.run(
+        [node, "-e", script, str(PORTAL / "supabase-client.js")],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
