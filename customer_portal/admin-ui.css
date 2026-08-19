@@ -1,6 +1,6 @@
 .admin-tabs {
   display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
+  grid-template-columns:repeat(6,minmax(0,1fr));
   gap:5px;
   margin-bottom:12px;
 }
@@ -50,6 +50,29 @@
   margin-bottom:12px;
 }
 
+.usage-section + .usage-section { margin-top:14px; }
+.usage-section h3 { margin:0 0 8px; font-size:14px; }
+.usage-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.usage-card { padding:11px; border:1px solid rgba(148,163,184,.18); border-radius:10px; background:rgba(15,23,42,.45); }
+.usage-card p { margin:6px 0 0; color:#aeb8c7; font-size:11px; line-height:1.45; }
+.usage-card-top { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+.usage-card-top span { font-size:11px; font-weight:700; }
+.usage-value { margin-top:6px; font-size:16px; font-weight:700; }
+.usage-value small { color:#8c97a8; font-size:10px; font-weight:500; }
+.usage-meter { height:6px; margin-top:8px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.07); }
+.usage-meter span { display:block; height:100%; border-radius:inherit; background:#4ade80; }
+.usage-watch .usage-meter span { background:#facc15; }
+.usage-warning .usage-meter span, .usage-warning { border-color:rgba(251,146,60,.45); }
+.usage-warning .usage-meter span { background:#fb923c; }
+.usage-danger .usage-meter span, .usage-danger { border-color:rgba(248,113,113,.55); }
+.usage-danger .usage-meter span { background:#f87171; }
+.usage-error { color:#fca5a5; }
+.usage-toolbar { margin-bottom:10px; }
+
+@media (max-width:900px) {
+  .usage-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
 @media (max-width:760px) {
   .admin-tabs {
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -63,10 +86,6 @@
     font-size:11px;
   }
 
-  .admin-tabs button:last-child {
-    grid-column:1 / -1;
-  }
-
   .admin-page .admin-account-bar .muted {
     display:none;
   }
@@ -75,4 +94,7 @@
     margin-bottom:8px;
     padding-bottom:8px;
   }
+
+  .usage-grid { grid-template-columns:1fr; }
+  .usage-value { font-size:14px; }
 }
