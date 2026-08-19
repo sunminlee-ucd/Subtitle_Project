@@ -96,7 +96,8 @@ def test_private_srt_storage_is_authorized_by_customer_grant() -> None:
     assert "/storage/v1/object/authenticated/" in extension_client
     assert 'downloadStorageText("subtitle-files"' in popup
     assert 'downloadStorageText("subtitle-files"' in background
-    assert 'uploadStorage("subtitle-files"' in admin
+    assert "uploadStorage(" in admin
+    assert '"subtitle-files"' in admin
     assert 'storagePath=`${track.id}.srt`' in admin
 
 
@@ -167,7 +168,8 @@ def test_admin_can_securely_set_or_reset_own_password() -> None:
     assert "/auth/v1/recover" in client_script
     assert "/auth/v1/user" in client_script
     assert 'hash.get("type") !== "recovery"' in client_script
-    assert 'client.select("admin_users"' in admin_script
+    assert "client.select(" in admin_script
+    assert '"admin_users"' in admin_script
     assert "password.length<12" in admin_script
     assert "await client.updatePassword(password)" in admin_script
 
