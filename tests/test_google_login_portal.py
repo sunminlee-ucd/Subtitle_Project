@@ -20,6 +20,15 @@ def test_customer_portal_exposes_google_login_button() -> None:
     assert ".auth-divider" in styles
 
 
+def test_google_button_uses_official_color_logo_asset() -> None:
+    styles = (PORTAL / "auth-session.css").read_text(encoding="utf-8")
+
+    assert "https://developers.google.com/identity/images/g-logo.png" in styles
+    assert "center/18px 18px no-repeat" in styles
+    assert "font-size:0" in styles
+    assert "color:#4285f4" not in styles
+
+
 def test_google_login_uses_supabase_oauth_and_provider_check() -> None:
     script = (PORTAL / "customer.js").read_text(encoding="utf-8")
 
