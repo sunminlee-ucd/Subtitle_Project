@@ -152,5 +152,21 @@
       if (!this.isConfigured()) throw new Error("Supabase project URL and publishable key are not configured.");
     }
   }
+
   globalThis.PortalSupabase = { PortalSupabaseClient };
+
+  if (typeof document !== "undefined") {
+    const pathname = String(globalThis.location?.pathname || "");
+    const source = pathname.startsWith("/admin")
+      ? "/portal-assets/admin-translation-feedback.js?v=20260819-1"
+      : pathname.startsWith("/customer") || pathname === "/"
+        ? "/portal-assets/translation-feedback.js?v=20260819-1"
+        : "";
+    if (source && !document.querySelector(`script[src^="${source.split("?")[0]}"]`)) {
+      const script = document.createElement("script");
+      script.src = source;
+      script.async = false;
+      document.head.append(script);
+    }
+  }
 })();

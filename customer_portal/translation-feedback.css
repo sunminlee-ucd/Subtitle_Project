@@ -1,0 +1,19 @@
+.translation-feedback-fields{display:grid;gap:10px;margin:10px 0;padding:12px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:rgba(15,23,42,.38)}
+.translation-feedback-fields[hidden]{display:none}
+.translation-feedback-intro{display:flex;flex-direction:column;gap:3px;padding:2px 0 4px}
+.translation-feedback-intro strong{font-size:13px}
+.translation-feedback-intro span{color:#94a3b8;font-size:11px;line-height:1.35}
+.translation-feedback-fields textarea{min-height:70px}
+.admin-translation-feedback{margin-top:14px;padding-top:14px;border-top:1px solid rgba(148,163,184,.16)}
+.translation-feedback-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.translation-feedback-filters{display:flex;gap:8px;flex-wrap:wrap}
+.translation-feedback-filters select{min-width:140px}
+.translation-feedback-card{display:grid;gap:7px}
+.translation-feedback-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.translation-feedback-copy{padding:9px;border-radius:9px;background:rgba(15,23,42,.55)}
+.translation-feedback-copy small{display:block;margin-bottom:4px;color:#94a3b8}
+.translation-feedback-copy p{margin:0;white-space:pre-wrap}
+.translation-feedback-actions{display:flex;gap:7px;flex-wrap:wrap}
+.translation-feedback-actions .approve{background:#1f9d68}
+.translation-feedback-actions .reject{background:#7f3347}
+@media(max-width:760px){.translation-feedback-fields{padding:10px;gap:8px}.translation-feedback-pair{grid-template-columns:1fr}.translation-feedback-toolbar{align-items:stretch}.translation-feedback-filters{display:grid;grid-template-columns:1fr 1fr}.translation-feedback-filters select{min-width:0;width:100%}}
