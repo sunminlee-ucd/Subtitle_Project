@@ -1,0 +1,75 @@
+.request-actions {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+
+button.approve {
+  background:#168a55;
+  border:1px solid #28a86e;
+  box-shadow:0 8px 22px rgba(22,138,85,.18);
+}
+
+button.approve:hover:not(:disabled) {
+  background:#1a9b61;
+}
+
+button.decline {
+  background:#b93643;
+  border:1px solid #d34c59;
+  box-shadow:0 8px 22px rgba(185,54,67,.18);
+}
+
+button.decline:hover:not(:disabled) {
+  background:#cc3e4c;
+}
+
+button:disabled {
+  cursor:not-allowed;
+  opacity:.45;
+  transform:none !important;
+  filter:none !important;
+}
+
+.status-badge {
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  margin-top:10px;
+  padding:6px 10px;
+  border:1px solid var(--line-strong);
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.01em;
+}
+
+.status-submitted {
+  color:#c8dcff;
+  border-color:rgba(105,167,255,.28);
+  background:rgba(105,167,255,.10);
+}
+
+.status-pending {
+  color:#f6d98f;
+  border-color:rgba(246,200,104,.30);
+  background:rgba(246,200,104,.10);
+}
+
+.status-complete {
+  color:#8ee3c8;
+  border-color:rgba(69,198,170,.30);
+  background:rgba(69,198,170,.10);
+}
+
+.status-declined {
+  color:#ff9aa5;
+  border-color:rgba(239,83,98,.30);
+  background:rgba(239,83,98,.10);
+}
+
+.subtitle-access-item .status-badge,
+.request-history-item .status-badge {
+  margin-top:10px;
+}

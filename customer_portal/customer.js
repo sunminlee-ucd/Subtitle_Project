@@ -1,5 +1,6 @@
 (() => {
   "use strict";
+
   const client = new PortalSupabase.PortalSupabaseClient(CUSTOMER_APP_CONFIG);
   const $ = (id) => document.getElementById(id);
   let user = null;
@@ -65,15 +66,16 @@
     $("auth").hidden = Boolean(user);
     $("workspace").hidden = !user;
     $("userEmail").textContent = user?.email || "";
-    if (user) await Promise.all([loadTracks(), loadHistory()]);
+    if (user) await Promise.all([loadTracks(), loadRequests()]);
   }
 
   async function loadTracks() {
     try {
       const tracks = await client.select(
         "subtitle_tracks",
-        "select=id,language_name,label,video:videos(title,episode_label)&is_active=eq.true&order=updated_at.desc"
+        "select=id,language_name,label,cue_count,updated_at,video:videos(title,episode_label,provider)&is_active=eq.true&order=updated_at.desc"
       );
+      renderAuthorizedTracks(tracks || []);
       const select = $("reportTrack");
       select.replaceChildren(new Option("Not sure / general issue", ""));
       for (const track of tracks || []) {
@@ -87,6 +89,31 @@
       }
     } catch (error) {
       setStatus(error.message);
+    }
+  }
+
+  function renderAuthorizedTracks(tracks) {
+    const list = $("subtitles");
+    list.replaceChildren();
+    for (const track of tracks) {
+      const video = Array.isArray(track.video) ? track.video[0] : track.video;
+      const card = document.createElement("article");
+      card.className = "list-item subtitle-access-item";
+      const title = document.createElement("strong");
+      title.textContent = `${video?.title || "Untitled"}${video?.episode_label ? ` · ${video.episode_label}` : ""}`;
+      const detail = document.createElement("p");
+      detail.textContent = `${providerLabel(video?.provider)} · ${track.language_name} · ${track.label}`;
+      const meta = document.createElement("small");
+      meta.className = "muted";
+      meta.textContent = `Available in your authorized Android app and Chrome extension · ${track.cue_count} subtitle lines`;
+      const badge = document.createElement("span");
+      badge.className = "status-badge status-complete";
+      badge.textContent = "Available";
+      card.append(title, detail, meta, badge);
+      list.append(card);
+    }
+    if (!tracks.length) {
+      list.textContent = "No subtitles are available to your account yet.";
     }
   }
 
@@ -113,8 +140,8 @@
         notes,
       });
       form.reset();
-      setStatus("Your request was sent. We’ll keep it in My history for you.");
-      await loadHistory();
+      setStatus("Your request was sent. You can follow its status in My requests.");
+      await loadRequests();
     } catch (error) {
       setStatus(error.message);
     }
@@ -135,65 +162,49 @@
       });
       form.reset();
       setStatus("Your report was sent. We will review it.");
-      await loadHistory();
     } catch (error) {
       setStatus(error.message);
     }
   }
 
-  async function loadHistory() {
+  async function loadRequests() {
     try {
-      const [requests, reports] = await Promise.all([
-        client.select(
-          "video_requests",
-          "select=id,provider,video_url,requested_language,notes,status,created_at&order=created_at.desc&limit=20"
-        ),
-        client.select(
-          "error_reports",
-          "select=id,category,message,status,created_at&order=created_at.desc&limit=20"
-        ),
-      ]);
-      const list = $("history");
+      const requests = await client.select(
+        "video_requests",
+        "select=id,provider,video_url,requested_language,notes,status,created_at&order=created_at.desc&limit=50"
+      );
+      const list = $("requestsHistory");
       list.replaceChildren();
-      const items = [
-        ...(requests || []).map((row) => {
-          const details = parseRequestDetails(row.notes);
-          const location = [details.season, details.episode].filter(Boolean).join(" · ");
-          const provider = providerLabel(row.provider);
-          return {
-            date: row.created_at,
-            title: `${details.title || "Video request"} · ${row.requested_language}`,
-            detail: [provider, location, row.video_url ? "Streaming link included" : "Title-based request"]
-              .filter(Boolean)
-              .join(" · "),
-            status: row.status,
-          };
-        }),
-        ...(reports || []).map((row) => ({
-          date: row.created_at,
-          title: `Issue · ${row.category}`,
-          detail: row.message,
-          status: row.status,
-        })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      for (const item of items) {
+      for (const row of requests || []) {
+        const details = parseRequestDetails(row.notes);
+        const location = [details.season, details.episode].filter(Boolean).join(" · ");
         const card = document.createElement("article");
-        card.className = "list-item";
+        card.className = "list-item request-history-item";
         const title = document.createElement("strong");
-        title.textContent = item.title;
+        title.textContent = `${details.title || "Video request"} · ${row.requested_language}`;
         const detail = document.createElement("p");
-        detail.textContent = item.detail;
+        detail.textContent = [providerLabel(row.provider), location].filter(Boolean).join(" · ");
         const meta = document.createElement("small");
         meta.className = "muted";
-        meta.textContent = `${item.status} · ${new Date(item.date).toLocaleString()}`;
-        card.append(title, detail, meta);
+        meta.textContent = new Date(row.created_at).toLocaleString();
+        const status = document.createElement("span");
+        const visible = customerRequestStatus(row.status);
+        status.className = `status-badge ${visible.className}`;
+        status.textContent = visible.label;
+        card.append(title, detail, meta, status);
         list.append(card);
       }
-      if (!items.length) list.textContent = "No requests or reports yet.";
+      if (!requests?.length) list.textContent = "You have not requested any subtitles yet.";
     } catch (error) {
       setStatus(error.message);
     }
+  }
+
+  function customerRequestStatus(status) {
+    if (status === "reviewing") return { label: "Pending", className: "status-pending" };
+    if (status === "completed") return { label: "Complete", className: "status-complete" };
+    if (status === "declined") return { label: "Declined", className: "status-declined" };
+    return { label: "Submitted", className: "status-submitted" };
   }
 
   function normalizeCodeField(input, prefix) {
@@ -234,7 +245,8 @@
   }
 
   function showView(name) {
-    const selected = ["request", "report", "history"].includes(name) ? name : "request";
+    const allowed = ["request", "report", "requests", "subtitles"];
+    const selected = allowed.includes(name) ? name : "request";
     document.querySelectorAll(".view").forEach((view) => {
       view.hidden = view.id !== `${selected}View`;
     });

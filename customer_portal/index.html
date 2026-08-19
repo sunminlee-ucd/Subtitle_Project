@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#070b12">
   <title>Subtitle Companion</title>
   <link rel="stylesheet" href="/portal-assets/styles.css">
+  <link rel="stylesheet" href="/portal-assets/workflow.css">
 </head>
 <body class="customer-page">
   <header class="site-header">
@@ -58,8 +59,9 @@
 
       <nav class="tabs" aria-label="Customer support sections">
         <button data-view="request">Request a title</button>
+        <button data-view="requests">My requests</button>
+        <button data-view="subtitles">My subtitles</button>
         <button data-view="report">Report an issue</button>
-        <button data-view="history">My history</button>
       </nav>
 
       <section id="requestView" class="card view request-card">
@@ -114,9 +116,31 @@
 
           <div class="submit-row">
             <button type="submit" class="primary-action">Send request</button>
-            <span>We’ll keep the request in your history so you can check its status.</span>
+            <span>We’ll keep the request in your account so you can check its status.</span>
           </div>
         </form>
+      </section>
+
+      <section id="requestsView" class="card view" hidden>
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">Requests</div>
+            <h2>My requests</h2>
+            <p class="muted">Approved requests show as Pending while we prepare the subtitle. Once the subtitle is ready and access is granted, it changes to Complete.</p>
+          </div>
+        </div>
+        <div id="requestsHistory" class="list"></div>
+      </section>
+
+      <section id="subtitlesView" class="card view" hidden>
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">Your access</div>
+            <h2>My subtitles</h2>
+            <p class="muted">Only subtitles shared with your account appear here. Use them from the authorized Android app or Chrome extension.</p>
+          </div>
+        </div>
+        <div id="subtitles" class="list"></div>
       </section>
 
       <section id="reportView" class="card view" hidden>
@@ -135,10 +159,6 @@
         </form>
       </section>
 
-      <section id="historyView" class="card view" hidden>
-        <div class="section-heading"><div><div class="eyebrow">Activity</div><h2>My requests and reports</h2><p class="muted">Your latest support activity appears here.</p></div></div>
-        <div id="history" class="list"></div>
-      </section>
       <p id="status" class="status"></p>
     </section>
   </main>
@@ -146,6 +166,6 @@
   <footer class="site-footer"><span>Subtitle Companion</span><span>Private access · Clear request tracking</span></footer>
   <script src="/portal-assets/config.js"></script>
   <script src="/portal-assets/supabase-client.js"></script>
-  <script src="/portal-assets/customer.js?v=20260818-2"></script>
+  <script src="/portal-assets/customer.js?v=20260819-1"></script>
 </body>
 </html>
