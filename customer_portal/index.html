@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/portal-assets/styles.css">
   <link rel="stylesheet" href="/portal-assets/workflow.css">
   <link rel="stylesheet" href="/portal-assets/density.css?v=20260819-2">
-  <link rel="stylesheet" href="/portal-assets/request-form.css?v=20260819-2">
+  <link rel="stylesheet" href="/portal-assets/request-form.css?v=20260819-3">
   <link rel="stylesheet" href="/portal-assets/auth-session.css?v=20260819-1">
 </head>
 <body class="customer-page">
@@ -78,9 +78,14 @@
             </label>
           </div>
 
-          <label class="request-language-row">Subtitle language <span class="field-badge required">Required</span>
+          <div class="request-language-row">
+            <div class="language-label-line">
+              <label for="requestLanguage" class="language-field-label">Subtitle language <span class="field-badge required">Required</span></label>
+              <button id="languageHelpButton" type="button" class="field-help-button" aria-label="What should I enter for subtitle language?" aria-controls="languageHelpText" aria-expanded="false">?</button>
+            </div>
+            <p id="languageHelpText" class="language-help-text" hidden>Enter the language you want the subtitles to be in, for example Persian, Korean, or Spanish.</p>
             <input id="requestLanguage" required placeholder="e.g. Persian" autocomplete="off">
-          </label>
+          </div>
 
           <div class="grid compact-grid">
             <label>Season <span class="field-badge optional">Optional</span>
@@ -157,6 +162,6 @@
   <footer class="site-footer"><span>Subtitle Companion</span><span>Private access · Clear request tracking</span></footer>
   <script src="/portal-assets/config.js"></script>
   <script src="/portal-assets/supabase-client.js?v=20260819-4"></script>
-  <script src="/portal-assets/customer.js?v=20260819-1"></script>
+  <script src="/portal-assets/customer.js?v=20260819-2"></script>
 </body>
 </html>
