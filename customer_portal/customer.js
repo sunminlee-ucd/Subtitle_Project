@@ -43,11 +43,7 @@
 
   async function signUp() {
     try {
-      const result = await client.signUp(
-        $("email").value.trim(),
-        $("password").value,
-        $("displayName").value.trim()
-      );
+      const result = await client.signUp($("email").value.trim(), $("password").value);
       $("authStatus").textContent = result.access_token
         ? "Account created. You can sign in now."
         : "Check your email to confirm the account, then sign in.";
