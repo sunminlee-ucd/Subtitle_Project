@@ -5,8 +5,8 @@
   const MIB = 1024 * 1024;
   const GIB = 1024 * MIB;
   const LIMITS = {
-    supabaseDatabase: 500 * MIB,
-    supabaseStorage: 1 * GIB,
+    supabaseDatabase: 500_000_000,
+    supabaseStorage: 1_000_000_000,
     supabaseMau: 50_000,
     cloudBuildMinutes: 2_500,
     artifactRegistry: 0.5 * GIB,
