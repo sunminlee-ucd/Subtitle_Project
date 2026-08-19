@@ -31,9 +31,10 @@
       other.removeItem(SESSION_KEY);
       return saved;
     }
-    async signIn(email, password, persistent = false) {
+    async signIn(email, password, persistent = null) {
       const session = await this.auth("/auth/v1/token?grant_type=password", { email, password });
-      return this.saveSession(session, persistent);
+      const remember = persistent ?? Boolean(document.getElementById("rememberLogin")?.checked);
+      return this.saveSession(session, remember);
     }
     async signUp(email, password) {
       return this.auth("/auth/v1/signup", { email, password });
