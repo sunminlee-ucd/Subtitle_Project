@@ -83,6 +83,19 @@
     async upsert(table, body, query = "") { return this.data("POST", table, query, body, "resolution=merge-duplicates,return=representation"); }
     async update(table, body, query = "") { return this.data("PATCH", table, query, body, "return=representation"); }
     async remove(table, query = "") { return this.data("DELETE", table, query, null, "return=minimal"); }
+    async rpc(functionName, body = {}) {
+      this.assertConfigured();
+      const session = await this.validSession();
+      if (!session) throw new Error("Please sign in first.");
+      return this.read(await fetch(
+        `${this.baseUrl}/rest/v1/rpc/${encodeURIComponent(functionName)}`,
+        {
+          method: "POST",
+          headers: this.headers(session.access_token, true),
+          body: JSON.stringify(body),
+        }
+      ));
+    }
     async uploadStorage(bucket, path, body, contentType = "application/octet-stream") {
       this.assertConfigured();
       const session = await this.validSession();
