@@ -1,17 +1,18 @@
 (() => {
   "use strict";
-  const SESSION_KEY = "subtitlePortalSession";
 
   class PortalSupabaseClient {
     constructor(config) {
       this.baseUrl = String(config?.SUPABASE_URL || "").replace(/\/$/, "");
       this.key = String(config?.SUPABASE_PUBLISHABLE_KEY || "");
+      const isAdmin = String(globalThis.location?.pathname || "").startsWith("/admin");
+      this.sessionKey = isAdmin ? "subtitlePortalAdminSession" : "subtitlePortalCustomerSession";
     }
     isConfigured() {
       return this.baseUrl.startsWith("https://") && !this.baseUrl.includes("YOUR_PROJECT_REF") && this.key.startsWith("sb_publishable_");
     }
     readStoredSession(storage) {
-      try { return JSON.parse(storage.getItem(SESSION_KEY) || "null"); } catch { return null; }
+      try { return JSON.parse(storage.getItem(this.sessionKey) || "null"); } catch { return null; }
     }
     session() {
       return this.readStoredSession(sessionStorage) || this.readStoredSession(localStorage);
@@ -20,15 +21,15 @@
       return !this.readStoredSession(sessionStorage) && Boolean(this.readStoredSession(localStorage));
     }
     clearStoredSession() {
-      sessionStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(this.sessionKey);
+      localStorage.removeItem(this.sessionKey);
     }
     saveSession(session, persistent = this.isPersistentSession()) {
       const saved = { ...session, expires_at_ms: Date.now() + Number(session.expires_in || 3600) * 1000 };
       const target = persistent ? localStorage : sessionStorage;
       const other = persistent ? sessionStorage : localStorage;
-      target.setItem(SESSION_KEY, JSON.stringify(saved));
-      other.removeItem(SESSION_KEY);
+      target.setItem(this.sessionKey, JSON.stringify(saved));
+      other.removeItem(this.sessionKey);
       return saved;
     }
     async signIn(email, password, persistent = null) {
