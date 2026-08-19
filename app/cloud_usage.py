@@ -31,11 +31,12 @@ def _metadata(path: str) -> str:
 
 
 def _access_token() -> str:
-    return _metadata("instance/service-accounts/default/token") and _read_json(
+    payload = _read_json(
         f"{_METADATA}/instance/service-accounts/default/token",
         headers={"Metadata-Flavor": "Google"},
         timeout=2,
-    )["access_token"]
+    )
+    return str(payload["access_token"])
 
 
 def _sum_metric(
