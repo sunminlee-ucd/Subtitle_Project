@@ -1,21 +1,128 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Subtitle Companion Admin</title><link rel="stylesheet" href="/portal-assets/styles.css"><link rel="stylesheet" href="/portal-assets/workflow.css"><link rel="stylesheet" href="/portal-assets/density.css?v=20260819-1"></head>
-<body><header><div class="brand"><div class="logo">A</div><div><h1>Subtitle Companion Admin</h1><div>Library access and customer support</div></div></div></header>
-<main><p id="setupNotice" class="notice" hidden>Configure the Supabase URL and publishable key in <code>customer_portal/config.js</code>.</p>
-  <section id="auth" class="card auth"><h2>Administrator sign in</h2><label>Email<input id="email" type="email" autocomplete="username"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label><div class="row"><button id="signIn">Sign in</button><button id="requestPasswordReset" class="secondary">Set / reset password</button></div><p class="muted">We will email a secure link to set your password.</p><p id="authStatus" class="status"></p></section>
-  <section id="passwordReset" class="card auth" hidden><h2>Choose a new administrator password</h2><p class="muted">Use at least 12 characters. A passphrase is recommended.</p><label>New password<input id="newPassword" type="password" minlength="12" autocomplete="new-password"></label><label>Confirm new password<input id="confirmPassword" type="password" minlength="12" autocomplete="new-password"></label><div class="row"><button id="savePassword">Save password</button><button id="cancelPasswordReset" class="secondary">Cancel</button></div><p id="passwordStatus" class="status"></p></section>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Subtitle Companion Admin</title>
+  <link rel="stylesheet" href="/portal-assets/styles.css">
+  <link rel="stylesheet" href="/portal-assets/workflow.css">
+  <link rel="stylesheet" href="/portal-assets/density.css?v=20260819-1">
+  <link rel="stylesheet" href="/portal-assets/admin-ui.css?v=20260819-1">
+</head>
+<body class="admin-page">
+<header>
+  <div class="brand">
+    <div class="logo">A</div>
+    <div><h1>Subtitle Companion Admin</h1><div>Library access and customer support</div></div>
+  </div>
+</header>
+<main>
+  <p id="setupNotice" class="notice" hidden>Configure the Supabase URL and publishable key in <code>customer_portal/config.js</code>.</p>
+
+  <section id="auth" class="card auth">
+    <h2>Administrator sign in</h2>
+    <label>Email<input id="email" type="email" autocomplete="username"></label>
+    <label>Password<input id="password" type="password" autocomplete="current-password"></label>
+    <div class="row"><button id="signIn">Sign in</button><button id="requestPasswordReset" class="secondary">Set / reset password</button></div>
+    <p class="muted">We will email a secure link to set your password.</p>
+    <p id="authStatus" class="status"></p>
+  </section>
+
+  <section id="passwordReset" class="card auth" hidden>
+    <h2>Choose a new administrator password</h2>
+    <p class="muted">Use at least 12 characters. A passphrase is recommended.</p>
+    <label>New password<input id="newPassword" type="password" minlength="12" autocomplete="new-password"></label>
+    <label>Confirm new password<input id="confirmPassword" type="password" minlength="12" autocomplete="new-password"></label>
+    <div class="row"><button id="savePassword">Save password</button><button id="cancelPasswordReset" class="secondary">Cancel</button></div>
+    <p id="passwordStatus" class="status"></p>
+  </section>
+
   <section id="workspace" hidden>
-    <div class="card row spread"><div><strong id="userEmail"></strong><div class="muted">Administrator access is verified by the database.</div></div><button id="signOut" class="quiet">Sign out</button></div>
-    <section class="card"><h2>Add or update a subtitle</h2><form id="trackForm">
-      <input id="videoKey" type="hidden"><input id="editingTrackId" type="hidden">
-      <div class="grid three"><label>Service<select id="provider"><option value="netflix">Netflix</option><option value="disney">Disney+</option><option value="youtube">YouTube</option><option value="other">Other</option></select></label><label>Title<input id="title" required></label><label>Episode label<input id="episode" placeholder="S1 E1"></label></div>
-      <div class="grid three"><label>Language code<input id="languageCode" required placeholder="fa"></label><label>Language name<input id="languageName" required placeholder="Persian"></label><label>Track label<input id="trackLabel" value="Default" required></label></div>
-      <div class="grid"><label>Translated SRT file<input id="srtFile" type="file" accept=".srt" required></label><div class="row"><button type="submit">Save to library</button><button id="newSubtitle" type="button" class="secondary">Start new subtitle</button></div></div>
-    </form></section>
-    <section class="card"><div class="row spread"><div><h2>Saved subtitle library</h2><div class="muted">Search by title, episode, service, language or track label.</div></div><button id="refreshLibrary" class="secondary">Refresh</button></div><label>Search library<input id="librarySearch" type="search" placeholder="Try a title or S1 E1"></label><div id="library" class="list"></div></section>
-    <section class="card"><h2>Grant customer access</h2><div class="grid"><label>Customer<select id="grantCustomer"></select></label><label>Subtitle<select id="grantTrack"></select></label></div><div class="row"><button id="grantAccess">Grant access</button><button id="revokeAccess" class="secondary">Revoke access</button></div></section>
-    <section class="card"><div class="row spread"><h2>Current grants</h2><button id="refresh" class="secondary">Refresh</button></div><div id="grants" class="list"></div></section>
-    <div class="grid"><section class="card"><h2>Video requests</h2><p class="muted">Accept makes the request Pending for the customer. Prepare access, upload the SRT, and the request completes automatically.</p><div id="requests" class="list"></div></section><section class="card"><h2>Error reports</h2><div id="reports" class="list"></div></section></div>
+    <div class="card row spread admin-account-bar">
+      <div><strong id="userEmail"></strong><div class="muted">Administrator access is verified by the database.</div></div>
+      <button id="signOut" class="quiet">Sign out</button>
+    </div>
+
+    <nav class="tabs admin-tabs" aria-label="Admin sections">
+      <button type="button" data-admin-view="requests">Requests <span id="requestCount" class="tab-count">0</span></button>
+      <button type="button" data-admin-view="library">Library</button>
+      <button type="button" data-admin-view="access">Access</button>
+      <button type="button" data-admin-view="reports">Reports</button>
+      <button type="button" data-admin-view="history">History <span id="historyCount" class="tab-count">0</span></button>
+    </nav>
+
+    <section id="adminRequestsView" class="admin-view card">
+      <div class="section-heading compact-heading">
+        <div>
+          <h2>Active requests</h2>
+          <p class="muted">Only New and Pending requests stay in this work queue.</p>
+        </div>
+      </div>
+      <div id="requests" class="list"></div>
+      <p id="activeRequestsEmpty" class="muted empty-state" hidden>No active requests.</p>
+    </section>
+
+    <section id="adminLibraryView" class="admin-view" hidden>
+      <section class="card">
+        <h2>Add or update a subtitle</h2>
+        <form id="trackForm">
+          <input id="videoKey" type="hidden"><input id="editingTrackId" type="hidden">
+          <div class="grid three">
+            <label>Service<select id="provider"><option value="netflix">Netflix</option><option value="disney">Disney+</option><option value="youtube">YouTube</option><option value="other">Other</option></select></label>
+            <label>Title<input id="title" required></label>
+            <label>Episode label<input id="episode" placeholder="S1 E1"></label>
+          </div>
+          <div class="grid three">
+            <label>Language code<input id="languageCode" required placeholder="fa"></label>
+            <label>Language name<input id="languageName" required placeholder="Persian"></label>
+            <label>Track label<input id="trackLabel" value="Default" required></label>
+          </div>
+          <div class="grid">
+            <label>Translated SRT file<input id="srtFile" type="file" accept=".srt" required></label>
+            <div class="row"><button type="submit">Save to library</button><button id="newSubtitle" type="button" class="secondary">Start new subtitle</button></div>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="row spread">
+          <div><h2>Saved subtitle library</h2><div class="muted">Search by title, episode, service, language or track label.</div></div>
+          <button id="refreshLibrary" class="secondary">Refresh</button>
+        </div>
+        <label>Search library<input id="librarySearch" type="search" placeholder="Try a title or S1 E1"></label>
+        <div id="library" class="list"></div>
+      </section>
+    </section>
+
+    <section id="adminAccessView" class="admin-view" hidden>
+      <section class="card">
+        <h2>Grant customer access</h2>
+        <div class="grid"><label>Customer<select id="grantCustomer"></select></label><label>Subtitle<select id="grantTrack"></select></label></div>
+        <div class="row"><button id="grantAccess">Grant access</button><button id="revokeAccess" class="secondary">Revoke access</button></div>
+      </section>
+      <section class="card">
+        <div class="row spread"><h2>Current grants</h2><button id="refresh" class="secondary">Refresh</button></div>
+        <div id="grants" class="list"></div>
+      </section>
+    </section>
+
+    <section id="adminReportsView" class="admin-view card" hidden>
+      <div class="section-heading compact-heading"><div><h2>Error reports</h2><p class="muted">Review customer timing, translation, and display issues.</p></div></div>
+      <div id="reports" class="list"></div>
+    </section>
+
+    <section id="adminHistoryView" class="admin-view card" hidden>
+      <div class="section-heading compact-heading"><div><h2>Request history</h2><p class="muted">Completed and declined requests are kept here for reference.</p></div></div>
+      <div id="requestHistory" class="list"></div>
+      <p id="requestHistoryEmpty" class="muted empty-state" hidden>No completed or declined requests yet.</p>
+    </section>
+
     <p id="status" class="status"></p>
   </section>
-</main><script src="/portal-assets/config.js"></script><script src="/portal-assets/supabase-client.js?v=20260817-3"></script><script src="/portal-assets/admin.js?v=20260819-1"></script></body></html>
+</main>
+<script src="/portal-assets/config.js"></script>
+<script src="/portal-assets/supabase-client.js?v=20260817-3"></script>
+<script src="/portal-assets/admin.js?v=20260819-1"></script>
+<script src="/portal-assets/admin-ui.js?v=20260819-1"></script>
+</body>
+</html>
