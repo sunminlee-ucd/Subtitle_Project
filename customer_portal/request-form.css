@@ -1,0 +1,62 @@
+.request-field-order-note {
+  margin:0 0 10px;
+  font-size:11px;
+  color:#aeb8c7;
+}
+
+.field-badge {
+  display:inline-flex;
+  align-items:center;
+  min-height:18px;
+  margin-left:6px;
+  padding:2px 6px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  vertical-align:middle;
+}
+
+.field-badge.required {
+  color:#ffe4e7;
+  border:1px solid rgba(248,113,113,.48);
+  background:rgba(220,38,38,.20);
+}
+
+.field-badge.optional {
+  color:#aeb8c7;
+  border:1px solid rgba(148,163,184,.24);
+  background:rgba(148,163,184,.07);
+}
+
+.request-primary-grid {
+  grid-template-columns:minmax(190px,.65fr) minmax(0,1.35fr);
+}
+
+.request-language-row {
+  max-width:720px;
+}
+
+@media (max-width:760px) {
+  .request-primary-grid {
+    grid-template-columns:1fr;
+  }
+
+  .request-language-row {
+    max-width:none;
+  }
+
+  .request-field-order-note {
+    margin-bottom:8px;
+    font-size:10px;
+  }
+
+  .field-badge {
+    min-height:17px;
+    margin-left:4px;
+    padding:2px 5px;
+    font-size:8px;
+  }
+}
