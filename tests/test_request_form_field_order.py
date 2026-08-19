@@ -32,6 +32,16 @@ def test_required_and_optional_fields_are_explicitly_badged() -> None:
     assert '<input id="requestLanguage" required' in html
 
 
+def test_redundant_required_optional_legend_is_removed() -> None:
+    html = (PORTAL / "index.html").read_text(encoding="utf-8")
+    styles = (PORTAL / "request-form.css").read_text(encoding="utf-8")
+
+    assert "fields must be completed" not in html
+    assert "fields can be left blank" not in html
+    assert "request-field-order-note" not in html
+    assert ".request-field-order-note" not in styles
+
+
 def test_request_badges_are_visually_distinct_and_mobile_order_stacks() -> None:
     styles = (PORTAL / "request-form.css").read_text(encoding="utf-8")
     html = (PORTAL / "index.html").read_text(encoding="utf-8")
@@ -41,4 +51,18 @@ def test_request_badges_are_visually_distinct_and_mobile_order_stacks() -> None:
     assert "background:rgba(220,38,38,.20)" in styles
     assert "@media (max-width:760px)" in styles
     assert ".request-primary-grid {\n    grid-template-columns:1fr;" in styles
-    assert "/portal-assets/request-form.css" in html
+    assert "/portal-assets/request-form.css?v=20260819-2" in html
+
+
+def test_mobile_request_form_is_compact_without_ios_input_zoom() -> None:
+    styles = (PORTAL / "request-form.css").read_text(encoding="utf-8")
+
+    assert ".request-card .compact-heading p {\n    display:none;" in styles
+    assert ".request-card input," in styles
+    assert "font-size:16px" in styles
+    assert ".request-card .compact-grid" in styles
+    assert "grid-template-columns:repeat(2,minmax(0,1fr))" in styles
+    assert ".request-card textarea" in styles
+    assert "min-height:50px" in styles
+    assert ".request-card .submit-row .primary-action" in styles
+    assert "width:100%" in styles
