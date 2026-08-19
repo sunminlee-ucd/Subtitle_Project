@@ -1,6 +1,6 @@
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -90,8 +90,16 @@ global.sessionStorage = storage();
 global.location = { pathname: "/customer" };
 require(process.argv[1]);
 const Client = global.PortalSupabase.PortalSupabaseClient;
-const config = { SUPABASE_URL: "https://test.supabase.co", SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test" };
-const session = { access_token: "access", refresh_token: "refresh", expires_in: 3600, user: { id: "u" } };
+const config = {
+  SUPABASE_URL: "https://test.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+};
+const session = {
+  access_token: "access",
+  refresh_token: "refresh",
+  expires_in: 3600,
+  user: { id: "u" },
+};
 
 const customer = new Client(config);
 customer.saveSession(session, false);
