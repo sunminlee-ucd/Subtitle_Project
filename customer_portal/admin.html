@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/portal-assets/styles.css">
   <link rel="stylesheet" href="/portal-assets/workflow.css">
   <link rel="stylesheet" href="/portal-assets/density.css?v=20260819-1">
-  <link rel="stylesheet" href="/portal-assets/admin-ui.css?v=20260819-1">
+  <link rel="stylesheet" href="/portal-assets/admin-ui.css?v=20260819-2">
 </head>
 <body class="admin-page">
 <header>
@@ -49,14 +49,12 @@
       <button type="button" data-admin-view="access">Access</button>
       <button type="button" data-admin-view="reports">Reports</button>
       <button type="button" data-admin-view="history">History <span id="historyCount" class="tab-count">0</span></button>
+      <button type="button" data-admin-view="usage">Usage</button>
     </nav>
 
     <section id="adminRequestsView" class="admin-view card">
       <div class="section-heading compact-heading">
-        <div>
-          <h2>Active requests</h2>
-          <p class="muted">Only New and Pending requests stay in this work queue.</p>
-        </div>
+        <div><h2>Active requests</h2><p class="muted">Only New and Pending requests stay in this work queue.</p></div>
       </div>
       <div id="requests" class="list"></div>
       <p id="activeRequestsEmpty" class="muted empty-state" hidden>No active requests.</p>
@@ -117,12 +115,39 @@
       <p id="requestHistoryEmpty" class="muted empty-state" hidden>No completed or declined requests yet.</p>
     </section>
 
+    <section id="adminUsageView" class="admin-view card" hidden>
+      <div class="row spread usage-toolbar">
+        <div>
+          <h2>Free-tier usage</h2>
+          <p class="muted">Early warnings for the services used by Subtitle Companion.</p>
+        </div>
+        <button id="refreshUsage" type="button" class="secondary">Refresh</button>
+      </div>
+
+      <section class="usage-section">
+        <h3>Supabase · live project usage</h3>
+        <div id="supabaseUsage" class="usage-grid"><p class="muted">Open this tab to load usage.</p></div>
+      </section>
+
+      <section class="usage-section">
+        <h3>Cloud Run · this service</h3>
+        <div id="cloudRunUsage" class="usage-grid"><p class="muted">Open this tab to load usage.</p></div>
+      </section>
+
+      <section class="usage-section">
+        <h3>Deployment services · reference limits</h3>
+        <div id="otherUsage" class="usage-grid"></div>
+      </section>
+      <p id="usageStatus" class="status"></p>
+    </section>
+
     <p id="status" class="status"></p>
   </section>
 </main>
 <script src="/portal-assets/config.js"></script>
-<script src="/portal-assets/supabase-client.js?v=20260817-3"></script>
+<script src="/portal-assets/supabase-client.js?v=20260819-3"></script>
 <script src="/portal-assets/admin.js?v=20260819-1"></script>
-<script src="/portal-assets/admin-ui.js?v=20260819-1"></script>
+<script src="/portal-assets/admin-ui.js?v=20260819-2"></script>
+<script src="/portal-assets/admin-usage.js?v=20260819-1"></script>
 </body>
 </html>

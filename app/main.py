@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.cloud_usage import router as cloud_usage_router
 from app.config import Settings
 from app.csv_subtitles import (
     CsvSubtitleError,
@@ -32,6 +33,7 @@ app = FastAPI(
     version="0.1.0",
     description="Translate multiple SRT files while preserving subtitle timing.",
 )
+app.include_router(cloud_usage_router)
 app.mount("/portal-assets", StaticFiles(directory=PORTAL_DIR), name="portal-assets")
 
 
