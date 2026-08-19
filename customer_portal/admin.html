@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/portal-assets/styles.css">
   <link rel="stylesheet" href="/portal-assets/workflow.css">
   <link rel="stylesheet" href="/portal-assets/density.css?v=20260819-1">
-  <link rel="stylesheet" href="/portal-assets/admin-ui.css?v=20260819-2">
+  <link rel="stylesheet" href="/portal-assets/admin-ui.css?v=20260819-3">
 </head>
 <body class="admin-page">
 <header>
@@ -119,25 +119,34 @@
       <div class="row spread usage-toolbar">
         <div>
           <h2>Free-tier usage</h2>
-          <p class="muted">Early warnings for the services used by Subtitle Companion.</p>
+          <p class="muted">Check one service at a time to keep usage information easy to scan.</p>
         </div>
         <button id="refreshUsage" type="button" class="secondary">Refresh</button>
       </div>
 
-      <section class="usage-section">
-        <h3>Supabase · live project usage</h3>
-        <div id="supabaseUsage" class="usage-grid"><p class="muted">Open this tab to load usage.</p></div>
+      <nav class="tabs usage-tabs" aria-label="Usage services">
+        <button type="button" data-usage-view="supabase">Supabase</button>
+        <button type="button" data-usage-view="cloud-run">Cloud Run</button>
+      </nav>
+
+      <section id="usageSupabasePanel" class="usage-panel" data-usage-panel="supabase">
+        <div class="usage-section">
+          <h3>Supabase · live project usage</h3>
+          <div id="supabaseUsage" class="usage-grid"><p class="muted">Open this tab to load usage.</p></div>
+        </div>
       </section>
 
-      <section class="usage-section">
-        <h3>Cloud Run · this service</h3>
-        <div id="cloudRunUsage" class="usage-grid"><p class="muted">Open this tab to load usage.</p></div>
+      <section id="usageCloudRunPanel" class="usage-panel" data-usage-panel="cloud-run" hidden>
+        <div class="usage-section">
+          <h3>Cloud Run · this service</h3>
+          <div id="cloudRunUsage" class="usage-grid"><p class="muted">Open this tab to load usage.</p></div>
+        </div>
+        <div class="usage-section">
+          <h3>Deployment services · reference limits</h3>
+          <div id="otherUsage" class="usage-grid"></div>
+        </div>
       </section>
 
-      <section class="usage-section">
-        <h3>Deployment services · reference limits</h3>
-        <div id="otherUsage" class="usage-grid"></div>
-      </section>
       <p id="usageStatus" class="status"></p>
     </section>
 
@@ -148,6 +157,6 @@
 <script src="/portal-assets/supabase-client.js?v=20260819-3"></script>
 <script src="/portal-assets/admin.js?v=20260819-1"></script>
 <script src="/portal-assets/admin-ui.js?v=20260819-2"></script>
-<script src="/portal-assets/admin-usage.js?v=20260819-1"></script>
+<script src="/portal-assets/admin-usage.js?v=20260819-2"></script>
 </body>
 </html>
