@@ -1,1 +1,2 @@
 verify Android OAuth bridge redirects to Subtitle Companion app
+retry after FastAPI response typing fix
