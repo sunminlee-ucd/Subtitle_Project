@@ -25,8 +25,8 @@ def test_admin_usage_tab_is_wired() -> None:
 def test_usage_limits_and_warning_thresholds_are_present() -> None:
     usage = (PORTAL / "admin-usage.js").read_text(encoding="utf-8")
 
-    assert "500 * MIB" in usage
-    assert "1 * GIB" in usage
+    assert "500_000_000" in usage
+    assert "1_000_000_000" in usage
     assert "50_000" in usage
     assert "2_500" in usage
     assert "0.5 * GIB" in usage
