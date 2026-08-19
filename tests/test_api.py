@@ -34,6 +34,32 @@ def test_root_redirects_to_customer_request_view() -> None:
     assert response.headers["location"] == "/customer?view=request"
 
 
+def test_customer_pkce_code_redirects_back_to_android_app() -> None:
+    response = client.get("/customer?code=oauth-code-123", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "subtitlecompanion://auth-callback?code=oauth-code-123"
+
+
+def test_customer_oauth_error_redirects_back_to_android_app() -> None:
+    response = client.get(
+        "/customer?error=access_denied&error_description=User%20cancelled",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    assert response.headers["location"] == (
+        "subtitlecompanion://auth-callback?error=access_denied&error_description=User+cancelled"
+    )
+
+
+def test_normal_customer_portal_still_renders_web_app() -> None:
+    response = client.get("/customer")
+
+    assert response.status_code == 200
+    assert "Subtitle Companion" in response.text
+
+
 def test_translate_multiple_files_to_zip() -> None:
     app.dependency_overrides[get_translator] = lambda: EchoTranslator()
     sample = b"1\n00:00:01,000 --> 00:00:03,000\nHello\n"
