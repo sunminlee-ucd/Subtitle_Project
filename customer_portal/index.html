@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/portal-assets/workflow.css">
   <link rel="stylesheet" href="/portal-assets/density.css?v=20260819-2">
   <link rel="stylesheet" href="/portal-assets/request-form.css?v=20260819-2">
+  <link rel="stylesheet" href="/portal-assets/auth-session.css?v=20260819-1">
 </head>
 <body class="customer-page">
   <header class="site-header">
@@ -31,6 +32,7 @@
       <p class="muted">Sign in to request a title, track progress, or report a subtitle issue.</p>
       <label>Email<input id="email" type="email" autocomplete="email" placeholder="you@example.com"></label>
       <label>Password<input id="password" type="password" minlength="8" autocomplete="current-password" placeholder="••••••••"></label>
+      <label class="remember-login"><input id="rememberLogin" type="checkbox"><span>Keep me signed in</span></label>
       <div class="row auth-actions"><button id="signIn">Sign in</button><button id="signUp" class="secondary">Create account</button></div>
       <p class="privacy-note">Your account only shows subtitles that have been shared with you.</p>
       <p id="authStatus" class="status"></p>
@@ -154,7 +156,7 @@
 
   <footer class="site-footer"><span>Subtitle Companion</span><span>Private access · Clear request tracking</span></footer>
   <script src="/portal-assets/config.js"></script>
-  <script src="/portal-assets/supabase-client.js?v=20260819-2"></script>
+  <script src="/portal-assets/supabase-client.js?v=20260819-4"></script>
   <script src="/portal-assets/customer.js?v=20260819-1"></script>
 </body>
 </html>

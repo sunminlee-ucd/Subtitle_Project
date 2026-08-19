@@ -1,26 +1,41 @@
 (() => {
   "use strict";
-  const SESSION_KEY = "subtitlePortalSession";
 
   class PortalSupabaseClient {
     constructor(config) {
       this.baseUrl = String(config?.SUPABASE_URL || "").replace(/\/$/, "");
       this.key = String(config?.SUPABASE_PUBLISHABLE_KEY || "");
+      const isAdmin = String(globalThis.location?.pathname || "").startsWith("/admin");
+      this.sessionKey = isAdmin ? "subtitlePortalAdminSession" : "subtitlePortalCustomerSession";
     }
     isConfigured() {
       return this.baseUrl.startsWith("https://") && !this.baseUrl.includes("YOUR_PROJECT_REF") && this.key.startsWith("sb_publishable_");
     }
-    session() {
-      try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; }
+    readStoredSession(storage) {
+      try { return JSON.parse(storage.getItem(this.sessionKey) || "null"); } catch { return null; }
     }
-    saveSession(session) {
+    session() {
+      return this.readStoredSession(sessionStorage) || this.readStoredSession(localStorage);
+    }
+    isPersistentSession() {
+      return !this.readStoredSession(sessionStorage) && Boolean(this.readStoredSession(localStorage));
+    }
+    clearStoredSession() {
+      sessionStorage.removeItem(this.sessionKey);
+      localStorage.removeItem(this.sessionKey);
+    }
+    saveSession(session, persistent = this.isPersistentSession()) {
       const saved = { ...session, expires_at_ms: Date.now() + Number(session.expires_in || 3600) * 1000 };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(saved));
+      const target = persistent ? localStorage : sessionStorage;
+      const other = persistent ? sessionStorage : localStorage;
+      target.setItem(this.sessionKey, JSON.stringify(saved));
+      other.removeItem(this.sessionKey);
       return saved;
     }
-    async signIn(email, password) {
+    async signIn(email, password, persistent = null) {
       const session = await this.auth("/auth/v1/token?grant_type=password", { email, password });
-      return this.saveSession(session);
+      const remember = persistent ?? Boolean(document.getElementById("rememberLogin")?.checked);
+      return this.saveSession(session, remember);
     }
     async signUp(email, password) {
       return this.auth("/auth/v1/signup", { email, password });
@@ -41,7 +56,7 @@
         expires_in: Number(hash.get("expires_in") || 3600),
         token_type: hash.get("token_type") || "bearer",
         user: null
-      });
+      }, false);
       history.replaceState(null, "", `${location.pathname}?recovery=1`);
       return session;
     }
@@ -57,18 +72,19 @@
       if (session?.access_token) {
         await fetch(`${this.baseUrl}/auth/v1/logout`, { method: "POST", headers: this.headers(session.access_token) }).catch(() => null);
       }
-      localStorage.removeItem(SESSION_KEY);
+      this.clearStoredSession();
     }
     async validSession() {
+      const persistent = this.isPersistentSession();
       let session = this.session();
       if (!session?.access_token) return null;
       if (session.expires_at_ms > Date.now() + 60_000) return session;
       if (!session.refresh_token) return session.expires_at_ms > Date.now() ? session : null;
       try {
         session = await this.auth("/auth/v1/token?grant_type=refresh_token", { refresh_token: session.refresh_token });
-        return this.saveSession(session);
+        return this.saveSession(session, persistent);
       } catch {
-        localStorage.removeItem(SESSION_KEY);
+        this.clearStoredSession();
         return null;
       }
     }
