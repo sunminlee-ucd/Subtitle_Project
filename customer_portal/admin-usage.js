@@ -11,21 +11,49 @@
     cloudBuildMinutes: 2_500,
     artifactRegistry: 0.5 * GIB,
   };
-  let loaded = false;
+  const loadedViews = new Set();
+  let currentUsageView = "supabase";
 
   document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("refreshUsage")?.addEventListener("click", loadUsage);
-    document.querySelector('[data-admin-view="usage"]')?.addEventListener("click", () => {
-      if (!loaded) loadUsage();
+    document.getElementById("refreshUsage")?.addEventListener("click", () => loadCurrentUsage(true));
+    document.querySelectorAll("[data-usage-view]").forEach((button) => {
+      button.addEventListener("click", () => showUsageView(button.dataset.usageView));
     });
+    document.querySelector('[data-admin-view="usage"]')?.addEventListener("click", () => {
+      showUsageView(currentUsageView);
+    });
+    showUsageView("supabase", false);
   });
 
-  async function loadUsage() {
+  function showUsageView(name, shouldLoad = true) {
+    const selected = name === "cloud-run" ? "cloud-run" : "supabase";
+    currentUsageView = selected;
+
+    document.querySelectorAll("[data-usage-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.usagePanel !== selected;
+    });
+    document.querySelectorAll("[data-usage-view]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.usageView === selected);
+    });
+
+    if (shouldLoad && !loadedViews.has(selected)) {
+      loadCurrentUsage(false);
+    }
+  }
+
+  async function loadCurrentUsage(forceRefresh = false) {
     const status = document.getElementById("usageStatus");
+    if (!forceRefresh && loadedViews.has(currentUsageView)) return;
     if (status) status.textContent = "Refreshing usage…";
-    await Promise.allSettled([loadSupabase(), loadCloudRun()]);
-    renderReferenceServices();
-    loaded = true;
+
+    if (currentUsageView === "cloud-run") {
+      await loadCloudRun();
+      renderReferenceServices();
+    } else {
+      await loadSupabase();
+    }
+
+    loadedViews.add(currentUsageView);
     if (status) status.textContent = `Updated ${new Date().toLocaleString()}`;
   }
 

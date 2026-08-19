@@ -22,6 +22,36 @@ def test_admin_usage_tab_is_wired() -> None:
     assert "async rpc(functionName" in client
 
 
+def test_usage_is_split_into_supabase_and_cloud_run_tabs() -> None:
+    html = (PORTAL / "admin.html").read_text(encoding="utf-8")
+    usage = (PORTAL / "admin-usage.js").read_text(encoding="utf-8")
+    styles = (PORTAL / "admin-ui.css").read_text(encoding="utf-8")
+
+    assert 'data-usage-view="supabase"' in html
+    assert 'data-usage-view="cloud-run"' in html
+    assert 'data-usage-panel="supabase"' in html
+    assert 'data-usage-panel="cloud-run"' in html
+    assert 'id="usageSupabasePanel"' in html
+    assert 'id="usageCloudRunPanel"' in html
+    assert 'id="usageCloudRunPanel" class="usage-panel" data-usage-panel="cloud-run" hidden' in html
+    assert 'currentUsageView = "supabase"' in usage
+    assert 'panel.hidden = panel.dataset.usagePanel !== selected' in usage
+    assert 'button.classList.toggle("active"' in usage
+    assert ".usage-panel[hidden]" in styles
+    assert ".usage-tabs" in styles
+
+
+def test_usage_only_loads_the_selected_service() -> None:
+    usage = (PORTAL / "admin-usage.js").read_text(encoding="utf-8")
+
+    assert "Promise.allSettled" not in usage
+    assert 'if (currentUsageView === "cloud-run")' in usage
+    assert "await loadCloudRun()" in usage
+    assert "await loadSupabase()" in usage
+    assert "const loadedViews = new Set()" in usage
+    assert "loadedViews.has(currentUsageView)" in usage
+
+
 def test_usage_limits_and_warning_thresholds_are_present() -> None:
     usage = (PORTAL / "admin-usage.js").read_text(encoding="utf-8")
 
