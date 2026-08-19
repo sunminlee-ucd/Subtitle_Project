@@ -30,7 +30,7 @@
   }
 
   function showAdminView(name) {
-    const allowed = ["requests", "library", "access", "reports", "history"];
+    const allowed = ["requests", "library", "access", "reports", "history", "usage"];
     const selected = allowed.includes(name) ? name : "requests";
 
     document.querySelectorAll(".admin-view").forEach((view) => {
