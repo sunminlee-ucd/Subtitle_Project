@@ -15,7 +15,7 @@ def test_customer_and_admin_show_remember_login_checkbox() -> None:
     for html in (customer, admin):
         assert 'id="rememberLogin" type="checkbox"' in html
         assert "Keep me signed in" in html
-        assert "/portal-assets/auth-session.css?v=20260819-1" in html
+        assert "/portal-assets/auth-session.css?v=20260819-2" in html
         assert "/portal-assets/supabase-client.js?v=20260819-4" in html
 
 

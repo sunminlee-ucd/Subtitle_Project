@@ -154,7 +154,7 @@ def test_portal_assets_are_not_cached_between_deployments() -> None:
     customer_html = (PORTAL / "index.html").read_text(encoding="utf-8")
 
     assert 'response.headers["Cache-Control"] = "no-store"' in main_source
-    assert 'customer.js?v=20260819-2' in customer_html
+    assert 'customer.js?v=20260819-3' in customer_html
 
 
 def test_admin_can_securely_set_or_reset_own_password() -> None:

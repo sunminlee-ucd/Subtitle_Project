@@ -24,6 +24,62 @@
   line-height:1.25;
 }
 
+.customer-page .auth-divider {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin:9px 0;
+  color:#77859a;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+
+.customer-page .auth-divider::before,
+.customer-page .auth-divider::after {
+  content:"";
+  height:1px;
+  flex:1;
+  background:rgba(148,163,184,.18);
+}
+
+.customer-page .google-signin-button {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  width:100%;
+  min-height:38px;
+  padding:8px 12px;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#fff;
+  color:#1f2937;
+  font-size:12px;
+  font-weight:700;
+}
+
+.customer-page .google-signin-button:hover,
+.customer-page .google-signin-button:focus-visible {
+  background:#f8fafc;
+  border-color:#9ca3af;
+}
+
+.customer-page .google-signin-mark {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  color:#4285f4;
+  font-size:15px;
+  font-weight:900;
+  line-height:1;
+}
+
 @media (max-width:760px) {
   .remember-login {
     margin:5px 0 1px;
@@ -33,5 +89,14 @@
   .remember-login input[type="checkbox"] {
     width:18px;
     height:18px;
+  }
+
+  .customer-page .auth-divider {
+    margin:7px 0;
+  }
+
+  .customer-page .google-signin-button {
+    min-height:42px;
+    font-size:13px;
   }
 }
