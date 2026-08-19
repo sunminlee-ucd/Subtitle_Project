@@ -3,6 +3,7 @@
 
   const client = new PortalSupabase.PortalSupabaseClient(CUSTOMER_APP_CONFIG);
   const $ = (id) => document.getElementById(id);
+  const GOOGLE_OAUTH_PERSIST_KEY = "subtitlePortalCustomerGooglePersistent";
   let user = null;
   let languageHelpTimer = null;
 
@@ -15,7 +16,18 @@
     const video = params.get("video") || "";
     $("requestUrl").value = video;
     $("reportUrl").value = video;
-    const session = client.isConfigured() ? await client.validSession() : null;
+
+    let session = null;
+    if (client.isConfigured()) {
+      try {
+        session = await googleSessionFromUrl();
+        if (!session) session = await client.validSession();
+      } catch (error) {
+        $("authStatus").textContent = error.message;
+        session = await client.validSession();
+      }
+    }
+
     await setSession(session);
     showView(params.get("view") || "request");
   }
@@ -23,6 +35,7 @@
   function bind() {
     $("signIn").addEventListener("click", signIn);
     $("signUp").addEventListener("click", signUp);
+    $("googleSignIn").addEventListener("click", signInWithGoogle);
     $("signOut").addEventListener("click", signOut);
     $("requestForm").addEventListener("submit", submitRequest);
     $("reportForm").addEventListener("submit", submitReport);
@@ -52,6 +65,73 @@
     } catch (error) {
       $("authStatus").textContent = error.message;
     }
+  }
+
+  async function signInWithGoogle() {
+    $("authStatus").textContent = "Opening Google sign-in…";
+    try {
+      const settings = await client.read(
+        await fetch(`${client.baseUrl}/auth/v1/settings`, {headers:client.headers()})
+      );
+      if (!settings?.external?.google) {
+        throw new Error("Google sign-in is not enabled in Supabase yet.");
+      }
+
+      sessionStorage.setItem(
+        GOOGLE_OAUTH_PERSIST_KEY,
+        $("rememberLogin").checked ? "1" : "0"
+      );
+      const query = new URLSearchParams({
+        provider: "google",
+        redirect_to: `${location.origin}/customer`,
+      });
+      location.assign(`${client.baseUrl}/auth/v1/authorize?${query}`);
+    } catch (error) {
+      $("authStatus").textContent = error.message;
+    }
+  }
+
+  async function googleSessionFromUrl() {
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const oauthError = hash.get("error_description") || hash.get("error");
+    if (oauthError) {
+      sessionStorage.removeItem(GOOGLE_OAUTH_PERSIST_KEY);
+      clearAuthHash();
+      throw new Error(oauthError);
+    }
+
+    if (!hash.get("access_token")) return null;
+
+    const persistent = sessionStorage.getItem(GOOGLE_OAUTH_PERSIST_KEY) === "1";
+    let session = client.saveSession({
+      access_token: hash.get("access_token"),
+      refresh_token: hash.get("refresh_token") || "",
+      expires_in: Number(hash.get("expires_in") || 3600),
+      token_type: hash.get("token_type") || "bearer",
+      user: null,
+    }, persistent);
+
+    try {
+      const signedInUser = await client.read(
+        await fetch(`${client.baseUrl}/auth/v1/user`, {
+          headers: client.headers(session.access_token),
+        })
+      );
+      session = client.saveSession({...session, user:signedInUser}, persistent);
+    } catch (error) {
+      client.clearStoredSession();
+      throw error;
+    } finally {
+      sessionStorage.removeItem(GOOGLE_OAUTH_PERSIST_KEY);
+      clearAuthHash();
+    }
+
+    return session;
+  }
+
+  function clearAuthHash() {
+    if (!location.hash) return;
+    history.replaceState(null, "", `${location.pathname}${location.search}`);
   }
 
   async function signOut() {
