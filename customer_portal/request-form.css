@@ -31,6 +31,61 @@
 
 .request-language-row {
   max-width:720px;
+  margin:9px 0;
+}
+
+.language-label-line {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.language-field-label {
+  margin:0;
+}
+
+.field-help-button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:20px;
+  height:20px;
+  min-height:20px;
+  padding:0;
+  border:1px solid rgba(96,165,250,.42);
+  border-radius:999px;
+  background:rgba(59,130,246,.10);
+  color:#bfdbfe;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+}
+
+.field-help-button:hover,
+.field-help-button:focus-visible {
+  border-color:rgba(96,165,250,.72);
+  background:rgba(59,130,246,.18);
+}
+
+.language-help-text {
+  width:max-content;
+  max-width:min(620px,100%);
+  margin:5px 0 0;
+  padding:7px 9px;
+  border:1px solid rgba(96,165,250,.25);
+  border-radius:8px;
+  background:rgba(30,64,175,.12);
+  color:#bfdbfe;
+  font-size:10px;
+  line-height:1.4;
+}
+
+.language-help-text[hidden] {
+  display:none;
+}
+
+.request-language-row > input {
+  width:100%;
 }
 
 @media (max-width:760px) {
@@ -54,11 +109,16 @@
 
   .request-language-row {
     max-width:none;
+    margin:5px 0;
   }
 
   .request-card label {
     margin:5px 0;
     font-size:10.5px;
+  }
+
+  .request-card .language-field-label {
+    margin:0;
   }
 
   .request-card input,
@@ -90,6 +150,20 @@
     font-size:7.5px;
   }
 
+  .field-help-button {
+    width:24px;
+    height:24px;
+    min-height:24px;
+    font-size:12px;
+  }
+
+  .language-help-text {
+    width:100%;
+    margin-top:4px;
+    padding:6px 8px;
+    font-size:9.5px;
+  }
+
   .request-card .submit-row {
     margin-top:7px;
   }
@@ -111,6 +185,10 @@
 
   .request-card label {
     margin:4px 0;
+  }
+
+  .request-card .language-field-label {
+    margin:0;
   }
 
   .request-card input,
