@@ -51,7 +51,7 @@ def test_request_badges_are_visually_distinct_and_mobile_order_stacks() -> None:
     assert "background:rgba(220,38,38,.20)" in styles
     assert "@media (max-width:760px)" in styles
     assert ".request-primary-grid {\n    grid-template-columns:1fr;" in styles
-    assert "/portal-assets/request-form.css?v=20260819-2" in html
+    assert "/portal-assets/request-form.css?v=20260819-3" in html
 
 
 def test_mobile_request_form_is_compact_without_ios_input_zoom() -> None:
