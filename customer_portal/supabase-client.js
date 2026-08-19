@@ -22,8 +22,8 @@
       const session = await this.auth("/auth/v1/token?grant_type=password", { email, password });
       return this.saveSession(session);
     }
-    async signUp(email, password, displayName) {
-      return this.auth("/auth/v1/signup", { email, password, data: { display_name: displayName } });
+    async signUp(email, password) {
+      return this.auth("/auth/v1/signup", { email, password });
     }
     async requestPasswordReset(email, redirectTo) {
       this.assertConfigured();
