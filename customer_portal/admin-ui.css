@@ -30,7 +30,8 @@
   background:rgba(255,255,255,.16);
 }
 
-.admin-view[hidden] {
+.admin-view[hidden],
+.usage-panel[hidden] {
   display:none !important;
 }
 
@@ -48,6 +49,20 @@
 .admin-page .admin-view > .card:last-child,
 .admin-page .admin-view.card {
   margin-bottom:12px;
+}
+
+.usage-tabs {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px;
+  max-width:360px;
+  margin:0 0 12px;
+}
+
+.usage-tabs button {
+  width:100%;
+  min-height:34px;
+  padding:7px 10px;
 }
 
 .usage-section + .usage-section { margin-top:14px; }
@@ -93,6 +108,16 @@
   .admin-page .section-heading {
     margin-bottom:8px;
     padding-bottom:8px;
+  }
+
+  .usage-tabs {
+    max-width:none;
+    margin-bottom:9px;
+  }
+
+  .usage-tabs button {
+    min-height:34px;
+    font-size:11px;
   }
 
   .usage-grid { grid-template-columns:1fr; }
