@@ -172,6 +172,7 @@ th,td { padding:7px; }
   }
   .hero-panel h2 { font-size:26px; }
   .hero-panel p { font-size:13px; }
+  input,select,textarea { font-size:16px; }
   .tabs button { font-size:11px; }
   .submit-row .primary-action { min-height:40px; }
   .account-bar { padding:9px 10px; }
