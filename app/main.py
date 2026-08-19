@@ -78,8 +78,8 @@ async def index() -> RedirectResponse:
     return RedirectResponse(url="/customer?view=request", status_code=307)
 
 
-@app.get("/customer", include_in_schema=False)
-async def customer_portal(request: Request) -> FileResponse | RedirectResponse:
+@app.get("/customer", include_in_schema=False, response_model=None)
+async def customer_portal(request: Request):
     oauth_params = {
         key: value
         for key in ("code", "error", "error_code", "error_description")
