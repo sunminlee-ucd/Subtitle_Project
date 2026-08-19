@@ -4,6 +4,7 @@
   const client = new PortalSupabase.PortalSupabaseClient(CUSTOMER_APP_CONFIG);
   const $ = (id) => document.getElementById(id);
   let user = null;
+  let languageHelpTimer = null;
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -25,6 +26,7 @@
     $("signOut").addEventListener("click", signOut);
     $("requestForm").addEventListener("submit", submitRequest);
     $("reportForm").addEventListener("submit", submitReport);
+    $("languageHelpButton").addEventListener("click", showLanguageHelp);
     $("requestSeason").addEventListener("blur", () => normalizeCodeField($("requestSeason"), "S"));
     $("requestEpisode").addEventListener("blur", () => normalizeCodeField($("requestEpisode"), "E"));
     document.querySelectorAll("[data-view]").forEach((button) =>
@@ -201,6 +203,19 @@
     if (status === "completed") return { label: "Complete", className: "status-complete" };
     if (status === "declined") return { label: "Declined", className: "status-declined" };
     return { label: "Submitted", className: "status-submitted" };
+  }
+
+  function showLanguageHelp() {
+    const button = $("languageHelpButton");
+    const help = $("languageHelpText");
+    clearTimeout(languageHelpTimer);
+    help.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    languageHelpTimer = setTimeout(() => {
+      help.hidden = true;
+      button.setAttribute("aria-expanded", "false");
+      languageHelpTimer = null;
+    }, 3000);
   }
 
   function normalizeCodeField(input, prefix) {
