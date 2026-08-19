@@ -49,6 +49,14 @@ main,.portal-main {
 }
 .account-bar strong { font-size:12px; }
 .account-label { font-size:9px; }
+.account-identity { min-width:0; }
+#userEmail {
+  display:block;
+  max-width:min(60vw,520px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 
 .hero-panel {
   grid-template-columns:minmax(0,1.8fr) minmax(220px,.7fr);
@@ -119,6 +127,12 @@ button.quiet { padding:6px 8px; }
   padding-bottom:12px;
 }
 .section-heading h2 { margin-bottom:4px; }
+.customer-page .compact-heading {
+  margin-bottom:10px;
+  padding-bottom:8px;
+}
+.customer-page .compact-heading h2 { font-size:20px; }
+.customer-page .compact-heading p { font-size:11px; }
 .submit-row { gap:10px; margin-top:12px; }
 .submit-row span { font-size:10px; }
 
@@ -156,15 +170,15 @@ th,td { padding:7px; }
 @media (max-width:760px) {
   body { font-size:13px; }
   header.site-header,body > header {
-    min-height:58px;
-    padding:10px 12px;
+    min-height:54px;
+    padding:8px 10px;
   }
   main,.portal-main {
-    width:min(100% - 18px,1320px);
-    margin-top:10px;
+    width:min(100% - 14px,1320px);
+    margin-top:8px;
   }
-  .card { padding:13px; border-radius:13px; }
-  .auth { margin:18px auto; }
+  .card { padding:11px; border-radius:12px; }
+  .auth { margin:16px auto; }
   .hero-panel {
     margin-bottom:10px;
     padding:17px 15px;
@@ -173,14 +187,62 @@ th,td { padding:7px; }
   .hero-panel h2 { font-size:26px; }
   .hero-panel p { font-size:13px; }
   input,select,textarea { font-size:16px; }
-  .tabs button { font-size:11px; }
   .submit-row .primary-action { min-height:40px; }
-  .account-bar { padding:9px 10px; }
+  .account-bar { padding:8px 9px; }
+
+  .customer-page .account-bar {
+    margin-bottom:7px;
+  }
+  .customer-page .account-label { display:none; }
+  .customer-page #userEmail { max-width:68vw; }
+  .customer-page .tabs {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    margin-bottom:8px;
+    padding:3px;
+    overflow:visible;
+  }
+  .customer-page .tabs button {
+    width:100%;
+    min-height:36px;
+    padding:7px 6px;
+    font-size:11px;
+    white-space:nowrap;
+  }
+  .customer-page .compact-heading {
+    margin-bottom:7px;
+    padding-bottom:7px;
+  }
+  .customer-page .compact-heading h2 {
+    margin-bottom:2px;
+    font-size:18px;
+  }
+  .customer-page .compact-heading p {
+    margin-bottom:0;
+    font-size:10px;
+    line-height:1.35;
+  }
+  .customer-page label { margin:7px 0; }
+  .customer-page .field-help { display:none; }
+  .customer-page .compact-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .customer-page textarea { min-height:62px; }
+  .customer-page .submit-row {
+    margin-top:9px;
+  }
+  .customer-page .submit-row span { display:none; }
+  .customer-page .site-footer { display:none; }
+  .customer-page .list-item { padding:9px; }
 }
 
 @media (max-width:430px) {
-  .logo { width:32px; height:32px; border-radius:9px; }
-  .brand-copy h1,.brand h1 { font-size:15px; }
+  .logo { width:30px; height:30px; border-radius:8px; }
+  .brand-copy h1,.brand h1 { font-size:14px; }
   .hero-panel h2 { font-size:24px; }
   .trust-points span { font-size:9px; }
+  .customer-page .brand-copy h1 { font-size:14px; }
+  .customer-page .tabs button { font-size:10.5px; }
 }
