@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
@@ -27,6 +28,7 @@ from app.translator import EchoTranslator, OpenAITranslator, SubtitleTranslator,
 BASE_DIR = Path(__file__).resolve().parent
 PORTAL_DIR = BASE_DIR.parent / "customer_portal"
 SAFE_LANGUAGE_PATTERN = re.compile(r"^[\w .(),'\-/]{2,80}$", re.UNICODE)
+ANDROID_AUTH_CALLBACK_URL = "subtitlecompanion://auth-callback"
 
 app = FastAPI(
     title="Subtitle Project API",
@@ -77,7 +79,15 @@ async def index() -> RedirectResponse:
 
 
 @app.get("/customer", include_in_schema=False)
-async def customer_portal() -> FileResponse:
+async def customer_portal(request: Request) -> FileResponse | RedirectResponse:
+    oauth_params = {
+        key: value
+        for key in ("code", "error", "error_code", "error_description")
+        if (value := request.query_params.get(key))
+    }
+    if oauth_params:
+        callback_url = f"{ANDROID_AUTH_CALLBACK_URL}?{urlencode(oauth_params)}"
+        return RedirectResponse(url=callback_url, status_code=307)
     return FileResponse(PORTAL_DIR / "index.html")
 
 
