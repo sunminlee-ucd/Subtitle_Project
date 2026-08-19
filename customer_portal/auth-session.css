@@ -67,17 +67,14 @@
 }
 
 .customer-page .google-signin-mark {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:20px;
-  height:20px;
-  border-radius:50%;
-  background:#fff;
-  color:#4285f4;
-  font-size:15px;
-  font-weight:900;
-  line-height:1;
+  display:inline-block;
+  width:18px;
+  height:18px;
+  flex:0 0 18px;
+  overflow:hidden;
+  background:#fff url("https://developers.google.com/identity/images/g-logo.png") center/18px 18px no-repeat;
+  font-size:0;
+  line-height:0;
 }
 
 @media (max-width:760px) {
