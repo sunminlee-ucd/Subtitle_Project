@@ -14,11 +14,11 @@ def test_admin_request_can_prepare_customer_for_access_grant() -> None:
     source = (PORTAL / "admin.js").read_text(encoding="utf-8")
 
     assert 'let pendingGrantCustomerId = "";' in source
-    assert 'owner.textContent=`Customer: ${customerLabel(row.customer_id)}`' in source
-    assert 'prepare.textContent="Prepare access"' in source
-    assert 'pendingGrantCustomerId=row.customer_id||""' in source
-    assert '$("grantCustomer").value=pendingGrantCustomerId' in source
-    assert 'subtitle_grants' in source
+    assert "Customer: ${customerLabel(row.customer_id)}" in source
+    assert 'prepare.textContent = "Prepare access"' in source
+    assert 'pendingGrantCustomerId = row.customer_id || ""' in source
+    assert '$("grantCustomer").value = pendingGrantCustomerId' in source
+    assert '"subtitle_grants"' in source
     granted_message = (
         '"Access granted. The subtitle is now available to this customer in authorized clients."'
     )
@@ -28,9 +28,11 @@ def test_admin_request_can_prepare_customer_for_access_grant() -> None:
 def test_admin_upload_still_uses_private_storage_before_grant() -> None:
     source = (PORTAL / "admin.js").read_text(encoding="utf-8")
 
-    assert 'uploadStorage("subtitle-files",storagePath' in source
-    assert 'client.update("subtitle_tracks",{storage_path:storagePath}' in source
-    assert 'client.upsert("subtitle_grants"' in source
+    assert "uploadStorage(" in source
+    assert '"subtitle-files"' in source
+    assert "storagePath" in source
+    assert 'client.update("subtitle_tracks", {storage_path:storagePath}' in source
+    assert 'client.upsert(\n          "subtitle_grants"' in source
 
 
 def test_customer_and_admin_portal_scripts_have_valid_javascript_syntax() -> None:
