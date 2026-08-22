@@ -1,0 +1,54 @@
+.overlay-power-card {
+  position:sticky;
+  top:0;
+  z-index:20;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+  margin:0 0 10px;
+  padding:10px 11px;
+  border:1px solid #6d2026;
+  border-radius:13px;
+  background:linear-gradient(135deg,#241013 0%,#111217 72%);
+  box-shadow:0 8px 22px rgba(0,0,0,.34),0 0 0 1px rgba(229,9,20,.08);
+}
+.overlay-power-copy { min-width:0; }
+.overlay-power-copy strong {
+  display:block;
+  overflow:hidden;
+  color:#f7f7f8;
+  font-size:12px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.overlay-power-button {
+  min-width:142px;
+  min-height:39px;
+  padding:9px 13px;
+  border:1px solid transparent;
+  border-radius:9px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.035em;
+}
+.overlay-power-button.running {
+  color:#fff;
+  background:var(--primary);
+  border-color:#ff424c;
+  box-shadow:0 4px 14px rgba(229,9,20,.28);
+}
+.overlay-power-button.stopped {
+  color:#111217;
+  background:#f7f7f8;
+  border-color:#fff;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+}
+.overlay-power-button:focus-visible {
+  outline:3px solid rgba(229,9,20,.36);
+  outline-offset:2px;
+}
+@media (max-width:420px) {
+  .overlay-power-card { gap:7px; padding:9px 10px; }
+  .overlay-power-button { min-width:128px; padding-inline:10px; }
+}
