@@ -1,0 +1,76 @@
+.tab-bar {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  align-items:end;
+  gap:2px;
+  margin:0;
+  padding:0 7px;
+  border:0;
+  border-bottom:1px solid #3a3b43;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+
+.tab-button {
+  position:relative;
+  min-width:0;
+  min-height:38px;
+  margin:0 0 -1px;
+  padding:9px 5px 10px;
+  border:1px solid #24252c;
+  border-bottom-color:#3a3b43;
+  border-radius:10px 10px 0 0;
+  color:#8f8f98;
+  background:#0b0c10;
+  box-shadow:none;
+  font-size:11px;
+  font-weight:800;
+}
+
+.tab-button:hover {
+  color:#ffc0c4;
+  background:#171014;
+  border-color:#4c2429;
+  border-bottom-color:#3a3b43;
+}
+
+.tab-button.active {
+  z-index:2;
+  color:#fff;
+  background:#101116;
+  border-color:#6d2026 #6d2026 #101116;
+  box-shadow:inset 0 3px 0 var(--primary);
+}
+
+.tab-button.active::after {
+  content:"";
+  position:absolute;
+  right:0;
+  bottom:-3px;
+  left:0;
+  height:4px;
+  background:#101116;
+}
+
+.tab-panel {
+  margin:0;
+  padding:10px 10px 0;
+  border:1px solid #3a3b43;
+  border-top:0;
+  border-radius:0 0 14px 14px;
+  background:#101116;
+  box-shadow:0 8px 22px rgba(0,0,0,.22);
+  animation:tabIn .13s ease-out;
+}
+
+.tab-panel > .card:last-child,
+.tab-panel > details.card:last-child {
+  margin-bottom:10px;
+}
+
+@media (max-width:420px) {
+  .tab-bar { padding-inline:4px; }
+  .tab-button { min-height:36px; padding-inline:3px; font-size:10px; }
+  .tab-panel { padding-inline:8px; }
+}
