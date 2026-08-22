@@ -23,16 +23,21 @@ def test_admin_extension_groups_tools_into_four_tabs() -> None:
     assert "Playback details" in html
 
 
-def test_admin_tabs_are_accessible_and_use_existing_red_theme() -> None:
+def test_admin_tabs_are_accessible_and_read_as_connected_tabs() -> None:
+    html = (EXTENSION / "popup.html").read_text(encoding="utf-8")
     script = (EXTENSION / "tabs.js").read_text(encoding="utf-8")
     css = (EXTENSION / "tabs.css").read_text(encoding="utf-8")
 
+    assert '<link rel="stylesheet" href="tabs.css" />' in html
     assert 'button.setAttribute("aria-selected", String(active))' in script
     assert "ArrowLeft" in script and "ArrowRight" in script
     assert 'showTab("extract")' in script
-    assert 'stylesheet.href = "tabs.css"' in script
+    assert 'stylesheet.href = "tabs.css"' not in script
     assert ".tab-button.active" in css
-    assert "background:var(--primary)" in css
+    assert "border-radius:10px 10px 0 0" in css
+    assert "box-shadow:inset 0 3px 0 var(--primary)" in css
+    assert ".tab-button.active::after" in css
+    assert "border-top:0" in css
 
 
 def test_all_existing_admin_popup_controls_remain_available() -> None:
