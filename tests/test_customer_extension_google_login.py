@@ -33,9 +33,13 @@ def test_customer_extension_uses_chrome_identity_and_background_oauth() -> None:
     oauth = (EXTENSION / "google-oauth.js").read_text(encoding="utf-8")
     ui = (EXTENSION / "google-auth-ui.js").read_text(encoding="utf-8")
 
+    expected_imports = (
+        'importScripts("config.js", "supabase-client.js", '
+        '"google-oauth.js", "subtitle-core.js")'
+    )
     assert "identity" in manifest["permissions"]
     assert manifest["version"] == "0.3.4"
-    assert 'importScripts("config.js", "supabase-client.js", "google-oauth.js", "subtitle-core.js")' in background
+    assert expected_imports in background
     assert 'message?.type === "CUSTOMER_GOOGLE_SIGN_IN"' in background
     assert "CustomerGoogleOAuth.launch(client)" in background
     assert 'type: "CUSTOMER_GOOGLE_SIGN_IN"' in ui
