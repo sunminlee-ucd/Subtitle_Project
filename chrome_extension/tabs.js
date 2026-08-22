@@ -1,11 +1,6 @@
 (() => {
   "use strict";
 
-  const stylesheet = document.createElement("link");
-  stylesheet.rel = "stylesheet";
-  stylesheet.href = "tabs.css";
-  document.head.append(stylesheet);
-
   document.addEventListener("DOMContentLoaded", () => {
     const buttons = [...document.querySelectorAll("[data-admin-tab]")];
     const panels = [...document.querySelectorAll("[data-admin-panel]")];
@@ -25,7 +20,7 @@
     for (const button of buttons) {
       button.addEventListener("click", () => showTab(button.dataset.adminTab));
       button.addEventListener("keydown", (event) => {
-        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
         const currentIndex = buttons.indexOf(button);
         const delta = event.key === "ArrowRight" ? 1 : -1;
