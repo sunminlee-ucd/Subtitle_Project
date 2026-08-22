@@ -1,14 +1,28 @@
 # Subtitle Companion customer extension
 
-This folder is a separate customer build. It intentionally contains:
+This folder is the customer-only browser build. It mirrors the Android customer experience while keeping the administrator SRT workflow separate.
 
-- customer sign-in;
-- a list of subtitle tracks authorized by database RLS;
-- remote subtitle selection and synchronized overlay;
+## Customer flow
+
+1. A customer signs in with the same Subtitle Companion account used by the customer portal or Android app.
+2. The extension lists only `subtitle_tracks` allowed by Supabase RLS and `subtitle_grants`.
+3. The customer selects an authorized subtitle, or two different authorized subtitles for Multi Subtitle mode.
+4. The private SRT is read with the customer's JWT, parsed in memory, and rendered over the supported streaming page.
+5. The extension never exposes an SRT file picker, capture/probe workflow, export action, or Chrome download permission.
+
+## Android-style controls included
+
+- collapsible control panels;
+- play/pause and seek backward/forward by five seconds;
+- playback speed cycling;
+- subtitle visibility;
+- 0.5-second sync adjustment;
+- subtitle size and vertical position adjustment;
 - Watch and Study modes;
-- links for video requests and error reports.
-
-It intentionally does **not** contain subtitle capture, track probing, file export, SRT file selection, or Chrome's `downloads` permission.
+- study repeat count from 1 to 20;
+- Repeat current, Play saved, Stop, Clear, and a saved-lines list;
+- Multi Subtitle with independently adjustable Sub 2 size and position;
+- request-subtitle and report-issue links.
 
 ## Local installation
 
@@ -20,8 +34,12 @@ It intentionally does **not** contain subtitle capture, track probing, file expo
 
 Only use a `sb_publishable_...` key here. Never use `sb_secret_...` or `service_role`.
 
-## Download limitation
+## Customer/admin separation
 
-The extension has no download/export UI or permission. However, subtitles displayed in a browser must reach that browser, so a technically skilled customer can still inspect memory or network traffic. Absolute copying prevention requires a licensed DRM delivery design and still cannot be guaranteed.
+The administrator build remains separate. Customer code intentionally does **not** contain subtitle capture, track probing, local SRT selection, file export, or Chrome's `downloads` permission. Creating, replacing, or exporting SRT files stays an administrator workflow.
 
-Authorized SRT files are read from the private Supabase Storage bucket named `subtitle-files` with the customer's current JWT. Storage RLS checks the same `subtitle_grants` relation used by the library. The extension parses the SRT in memory and does not save it as a local file.
+The customer extension can read only tracks that RLS authorizes for the signed-in account. The `subtitle-files` bucket remains private, and Storage RLS checks the same grant relation before returning an object.
+
+## Copying limitation
+
+A subtitle displayed in a browser must reach that browser as plaintext at render time. The extension prevents ordinary file download/export and enforces server-side account authorization, but a technically skilled user can still inspect browser memory or network traffic. Absolute copying prevention would require a licensed DRM delivery design and still cannot be guaranteed.
