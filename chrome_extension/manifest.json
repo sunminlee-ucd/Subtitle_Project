@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "OTT SRT Subtitle Sync",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "Captures Netflix and Disney+ timed text for local translation and displays translated SRT in sync.",
   "permissions": ["activeTab", "downloads", "storage"],
   "host_permissions": [
