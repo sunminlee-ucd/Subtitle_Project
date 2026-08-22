@@ -9,49 +9,171 @@
 <body>
   <header>
     <div class="brand-mark">S</div>
-    <div><h1>Subtitle Companion</h1><p>Subtitles shared especially with you</p></div>
+    <div>
+      <h1>Subtitle Companion</h1>
+      <p>Authorized subtitles for streaming and study</p>
+    </div>
   </header>
 
   <main>
     <div id="setupNotice" class="notice" hidden>Connect your Supabase project in <code>config.js</code>.</div>
+
     <section id="authCard" class="card">
-      <h2>Welcome back</h2>
+      <div class="eyebrow">Customer account</div>
+      <h2>Sign in</h2>
+      <p class="muted intro-copy">Use the same account as the customer portal and Android app.</p>
       <label>Email<input id="email" type="email" autocomplete="email"></label>
       <label>Password<input id="password" type="password" autocomplete="current-password"></label>
       <button id="signIn" class="primary">Sign in</button>
     </section>
 
-    <section id="libraryCard" class="card" hidden>
-      <div class="row spread"><div><h2>Your subtitles</h2><span id="userEmail" class="muted"></span></div><button id="signOut" class="text-button">Sign out</button></div>
-      <div class="context" id="pageContext">Open a supported video.</div>
-      <div id="trackList" class="track-list"></div>
-      <button id="refreshTracks" class="secondary">Refresh list</button>
+    <section id="workspace" hidden>
+      <section class="account-bar card compact-card">
+        <div>
+          <span class="eyebrow">Signed in</span>
+          <strong id="userEmail"></strong>
+        </div>
+        <button id="signOut" class="text-button">Sign out</button>
+      </section>
+
+      <details id="libraryCard" class="card collapsible-card" open>
+        <summary>
+          <span>
+            <span class="eyebrow">Authorized library</span>
+            <strong>My subtitles</strong>
+          </span>
+          <span class="summary-meta" id="libraryCount">0 available</span>
+        </summary>
+        <div class="panel-body">
+          <div class="context" id="pageContext">Open a supported video.</div>
+          <div class="inline-row">
+            <input id="trackSearch" class="compact-input" type="search" placeholder="Search title, episode or language" aria-label="Search authorized subtitles">
+            <button id="refreshTracks" class="small-button">Refresh</button>
+          </div>
+          <div id="trackList" class="track-list"></div>
+          <div id="selectedTrack" class="selection-banner">No subtitle selected</div>
+        </div>
+      </details>
+
+      <details id="multiSubtitleCard" class="card collapsible-card">
+        <summary>
+          <span>
+            <span class="eyebrow">Authorized library</span>
+            <strong>Multi Subtitle</strong>
+          </span>
+          <span class="summary-meta">2 tracks</span>
+        </summary>
+        <div class="panel-body">
+          <p class="muted panel-copy">Choose two authorized subtitles. Both are loaded in memory only and remain protected by the same account permissions.</p>
+          <label>Sub 1<select id="multiPrimary"></select></label>
+          <label>Sub 2<select id="multiSecondary"></select></label>
+          <div class="two-column-actions">
+            <button id="startMulti" class="primary flat">Start Multi Subtitle</button>
+            <button id="clearSecondary" class="secondary flat">Single subtitle</button>
+          </div>
+        </div>
+      </details>
+
+      <section id="controllerCard" class="card controller-card">
+        <div class="controller-head">
+          <div class="status-chip" id="syncStatus">NO VIDEO</div>
+          <div class="position-readout" id="positionStatus">00:00 / 00:00</div>
+          <div class="track-readout" id="trackStatus">No subtitle loaded</div>
+        </div>
+
+        <details class="control-section" open>
+          <summary>Playback</summary>
+          <div class="chip-row four">
+            <button id="seekBack" class="control-chip">-5</button>
+            <button id="playPause" class="control-chip primary-chip">Play</button>
+            <button id="seekForward" class="control-chip">+5</button>
+            <button id="speed" class="control-chip">1.0x</button>
+          </div>
+        </details>
+
+        <details class="control-section">
+          <summary>Subtitle timing &amp; size</summary>
+          <label class="switch-row"><span>Show subtitles</span><input id="visible" type="checkbox" checked></label>
+          <div class="chip-row four">
+            <button id="syncEarlier" class="control-chip">-.5</button>
+            <button id="syncLater" class="control-chip">+.5</button>
+            <button id="fontSmaller" class="control-chip text-small">a</button>
+            <button id="fontLarger" class="control-chip text-large">A</button>
+          </div>
+          <div class="control-meta"><span>Sync</span><strong id="offsetValue">+0.0s</strong><span>Size</span><strong id="fontValue">38px</strong></div>
+        </details>
+
+        <details class="control-section">
+          <summary>Subtitle position</summary>
+          <div class="chip-row three">
+            <button id="moveDown" class="control-chip">Down</button>
+            <button id="moveUp" class="control-chip">Up</button>
+            <button id="resetPosition" class="control-chip">Reset</button>
+          </div>
+          <div class="control-meta two"><span>Bottom</span><strong id="bottomValue">10%</strong></div>
+        </details>
+
+        <details id="secondaryControls" class="control-section" hidden>
+          <summary>Sub 2 size &amp; position</summary>
+          <div class="chip-row four">
+            <button id="secondarySmaller" class="control-chip text-small">a</button>
+            <button id="secondaryLarger" class="control-chip text-large">A</button>
+            <button id="secondaryDown" class="control-chip">Down</button>
+            <button id="secondaryUp" class="control-chip">Up</button>
+          </div>
+          <div class="two-column-actions compact-actions">
+            <button id="secondaryReset" class="secondary flat">Reset Sub 2</button>
+            <button id="secondaryRemove" class="secondary flat">Remove Sub 2</button>
+          </div>
+          <div class="control-meta"><span>Bottom</span><strong id="secondaryBottomValue">20%</strong><span>Size</span><strong id="secondaryFontValue">34px</strong></div>
+        </details>
+
+        <details id="studySection" class="control-section">
+          <summary>Study mode</summary>
+          <div class="segmented" role="group" aria-label="Viewing mode">
+            <button id="watchMode" class="active">Watch</button>
+            <button id="studyMode">Study</button>
+          </div>
+          <div class="repeat-row">
+            <button id="repeatMinus" class="control-chip small-chip">-</button>
+            <strong id="repeatValue">5x</strong>
+            <button id="repeatPlus" class="control-chip small-chip">+</button>
+          </div>
+          <div class="study-actions">
+            <button id="repeatCurrent" class="control-chip wide-chip">Repeat current</button>
+            <button id="playSelections" class="control-chip wide-chip">Play saved</button>
+            <button id="stopStudy" class="control-chip">Stop</button>
+            <button id="clearStudy" class="control-chip">Clear</button>
+          </div>
+          <p id="viewerStatus" class="muted viewer-status"></p>
+        </details>
+      </section>
+
+      <details id="savedCard" class="card collapsible-card">
+        <summary>
+          <span>
+            <span class="eyebrow">Study mode</span>
+            <strong>Saved lines</strong>
+          </span>
+          <span class="summary-meta" id="savedCount">0 saved</span>
+        </summary>
+        <div class="panel-body">
+          <div id="savedList" class="saved-list"></div>
+        </div>
+      </details>
+
+      <section class="help-card">
+        <button id="requestVideo">Request a subtitle</button>
+        <button id="reportError">Report an issue</button>
+      </section>
     </section>
 
-    <details id="viewerCard" class="card" open hidden>
-      <summary>Viewing controls</summary>
-      <div class="segmented" role="group" aria-label="Viewing mode">
-        <button id="watchMode" class="active">Watch</button><button id="studyMode">Study</button>
-      </div>
-      <label class="switch-row"><span>Show overlay subtitles</span><input id="visible" type="checkbox" checked></label>
-      <div class="grid">
-        <label>Sync offset (s)<input id="offset" type="number" min="-30" max="30" step="0.1"></label>
-        <label>Font size<input id="fontSize" type="number" min="18" max="72"></label>
-        <label>Bottom (%)<input id="bottom" type="number" min="2" max="45"></label>
-        <label>Repeat count<input id="repeatCount" type="number" min="1" max="20"></label>
-      </div>
-      <button id="playSelections" class="secondary">Play saved study lines</button>
-      <p id="viewerStatus" class="muted"></p>
-    </details>
-
-    <section class="help-card">
-      <button id="requestVideo">Request a video</button>
-      <button id="reportError">Report an issue</button>
-    </section>
     <p id="status" class="status" aria-live="polite"></p>
   </main>
+
   <script src="config.js"></script>
   <script src="supabase-client.js"></script>
+  <script src="subtitle-core.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
