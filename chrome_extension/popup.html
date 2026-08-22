@@ -3,78 +3,107 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Subtitle Sync</title>
+    <title>Subtitle Companion Admin</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body data-viewing-mode="watch">
     <main>
       <header class="app-header">
-        <h1>OTT SUBTITLE SYNC</h1>
+        <h1>SUBTITLE COMPANION</h1>
         <div id="status">Checking active tab...</div>
         <div id="fileStatus">No translated SRT loaded</div>
       </header>
 
-      <nav class="site-actions" aria-label="OTT navigation">
-        <button id="openNetflix" type="button">Open Netflix</button>
-        <button id="openDisney" type="button">Open Disney+</button>
+      <nav class="tab-bar" role="tablist" aria-label="Administrator extension sections">
+        <button class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="panelExtract" data-admin-tab="extract">Extract</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panelSubtitle" data-admin-tab="subtitle">Subtitle</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panelStudy" data-admin-tab="study">Study</button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panelStatus" data-admin-tab="status">Status</button>
       </nav>
 
-      <div class="mode-switch" role="group" aria-label="Viewing mode">
-        <button class="active" type="button" data-viewing-mode="watch">Watch mode</button>
-        <button type="button" data-viewing-mode="study">Study mode</button>
-      </div>
-      <div class="section-actions" aria-label="Panel sections">
-        <button id="expandAll" type="button">Open all sections</button>
-        <button id="collapseAll" type="button">Close all sections</button>
-      </div>
+      <section id="panelExtract" class="tab-panel" role="tabpanel" data-admin-panel="extract">
+        <details class="section" open>
+          <summary>1. Download detected subtitle track</summary>
+          <div id="trackProbeStatus" class="capture-status">Waiting for the page probe</div>
+          <div class="control">
+            <label for="trackCandidate">Current video track</label>
+            <select id="trackCandidate"><option value="">No candidate detected</option></select>
+          </div>
+          <div class="capture-actions">
+            <button id="downloadTrackCandidate" class="primary" type="button">Download selected</button>
+            <button id="startTrackProbe" type="button">Refresh candidates</button>
+            <button id="stopTrackProbe" type="button">Pause detection</button>
+            <button id="clearTrackProbe" type="button">Clear list</button>
+          </div>
+          <p class="note">Only subtitle responses for the current video are shown.</p>
+        </details>
 
-      <details class="section" open>
-        <summary>1. Download detected subtitle track</summary>
-        <div id="trackProbeStatus" class="capture-status">Waiting for the page probe</div>
-        <div class="control">
-          <label for="trackCandidate">Current video track</label>
-          <select id="trackCandidate"><option value="">No candidate detected</option></select>
-        </div>
-        <div class="capture-actions">
-          <button id="downloadTrackCandidate" class="primary" type="button">Download selected</button>
-          <button id="startTrackProbe" type="button">Refresh candidates</button>
-          <button id="stopTrackProbe" type="button">Pause detection</button>
-          <button id="clearTrackProbe" type="button">Clear list</button>
-        </div>
-        <p class="note">Only subtitle responses for the current video are shown.</p>
-      </details>
+        <details class="section" open>
+          <summary>2. Capture subtitles during playback</summary>
+          <div id="captureStatus" class="capture-status">Not capturing</div>
+          <div class="control-row">
+            <label for="captureRate">Playback speed</label>
+            <select id="captureRate">
+              <option value="1">1.0x</option><option value="1.5">1.5x</option>
+              <option value="2">2.0x</option><option value="3" selected>3.0x</option>
+            </select>
+          </div>
+          <div class="capture-actions">
+            <button id="startCapture" class="primary" type="button">Start capture</button>
+            <button id="stopCapture" type="button">Stop</button>
+            <button id="downloadCsv" type="button">Download CSV</button>
+            <button id="downloadSrt" type="button">Download SRT</button>
+          </div>
+          <div class="control">
+            <label for="downloadFolder">Downloads subfolder</label>
+            <input id="downloadFolder" type="text" value="Subtitle_Project/captures" />
+            <div id="downloadFolderStatus" class="capture-status">Saved automatically</div>
+          </div>
+          <button id="clearCapture" class="clear" type="button">Clear captured subtitles</button>
+        </details>
+      </section>
 
-      <details class="section">
-        <summary>2. Capture subtitles during playback</summary>
-        <div id="captureStatus" class="capture-status">Not capturing</div>
-        <div class="control-row">
-          <label for="captureRate">Playback speed</label>
-          <select id="captureRate">
-            <option value="1">1.0x</option><option value="1.5">1.5x</option>
-            <option value="2">2.0x</option><option value="3" selected>3.0x</option>
-          </select>
-        </div>
-        <div class="capture-actions">
-          <button id="startCapture" class="primary" type="button">Start capture</button>
-          <button id="stopCapture" type="button">Stop</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-          <button id="downloadSrt" type="button">Download SRT</button>
-        </div>
-        <div class="control">
-          <label for="downloadFolder">Downloads subfolder</label>
-          <input id="downloadFolder" type="text" value="Subtitle_Project/captures" />
-          <div id="downloadFolderStatus" class="capture-status">Saved automatically</div>
-        </div>
-        <button id="clearCapture" class="clear" type="button">Clear captured subtitles</button>
-      </details>
+      <section id="panelSubtitle" class="tab-panel" role="tabpanel" data-admin-panel="subtitle" hidden>
+        <details class="section" open>
+          <summary>3. Load translated SRT</summary>
+          <label class="file-picker" for="srtFile">Choose translated SRT file</label>
+          <input id="srtFile" type="file" accept=".srt,application/x-subrip,text/plain" />
+          <button id="toggleOverlay" class="overlay-toggle" type="button" disabled>Hide overlay subtitles</button>
+          <p class="note">Load a translated SRT locally to preview it over the active video.</p>
+        </details>
 
-      <details class="section" open>
-        <summary>3. Load translated SRT</summary>
-        <label class="file-picker" for="srtFile">Choose translated SRT file</label>
-        <input id="srtFile" type="file" accept=".srt,application/x-subrip,text/plain" />
-        <button id="toggleOverlay" class="overlay-toggle" type="button" disabled>Hide overlay subtitles</button>
-        <p class="note watch-only">Watch mode keeps subtitles synchronized without study controls.</p>
-        <div class="study-only">
+        <details class="section" open>
+          <summary>Display and timing settings</summary>
+          <div class="control">
+            <div class="control-row"><label for="offset">Timing offset</label><output id="offsetValue">+0.0 s</output></div>
+            <input id="offset" type="range" min="-30" max="30" step="0.1" value="0" />
+            <div class="offset-actions">
+              <button type="button" data-offset-delta="-0.5">0.5 s earlier</button>
+              <button type="button" data-offset-delta="0.5">0.5 s later</button>
+            </div>
+          </div>
+          <div class="control">
+            <div class="control-row"><label for="fontSize">Font size</label><output id="fontSizeValue">38 px</output></div>
+            <input id="fontSize" type="range" min="20" max="72" step="1" value="38" />
+          </div>
+          <div class="control">
+            <div class="control-row"><label for="bottom">Height from bottom</label><output id="bottomValue">10%</output></div>
+            <input id="bottom" type="range" min="3" max="45" step="1" value="10" />
+          </div>
+          <label class="toggle"><input id="showDiagnostics" type="checkbox" />Show playback diagnostic panel</label>
+          <button id="clear" class="clear" type="button">Remove loaded subtitles</button>
+        </details>
+      </section>
+
+      <section id="panelStudy" class="tab-panel" role="tabpanel" data-admin-panel="study" hidden>
+        <div class="mode-switch" role="group" aria-label="Viewing mode">
+          <button class="active" type="button" data-viewing-mode="watch">Watch mode</button>
+          <button type="button" data-viewing-mode="study">Study mode</button>
+        </div>
+        <p class="study-hint watch-only">Switch to Study mode to save subtitle lines from the video and replay selected clips.</p>
+
+        <details class="section study-only" open>
+          <summary>Study subtitle clips</summary>
           <div class="study-settings">
             <label for="repeatCount">Repeat each subtitle</label>
             <input id="repeatCount" type="number" min="1" max="20" step="1" value="5" />
@@ -92,44 +121,39 @@
           </div>
           <div id="selectionStatus">0 subtitles selected</div>
           <div id="cueList" class="cue-list" aria-label="Saved subtitle cues">
-            <div class="empty-state">Load an SRT file to begin.</div>
+            <div class="empty-state">Load an SRT file, then click subtitles on the video to save them.</div>
+          </div>
+        </details>
+      </section>
+
+      <section id="panelStatus" class="tab-panel" role="tabpanel" data-admin-panel="status" hidden>
+        <nav class="site-actions" aria-label="OTT navigation">
+          <button id="openNetflix" type="button">Open Netflix</button>
+          <button id="openDisney" type="button">Open Disney+</button>
+        </nav>
+
+        <details class="section" open>
+          <summary>Playback details</summary>
+          <dl>
+            <dt>Current time</dt><dd id="time">--</dd>
+            <dt>Duration</dt><dd id="duration">--</dd>
+            <dt>Playback</dt><dd id="playback">--</dd>
+            <dt>Rate</dt><dd id="rate">--</dd>
+            <dt>Fullscreen</dt><dd id="fullscreen">--</dd>
+          </dl>
+        </details>
+
+        <div class="section status-actions-card">
+          <div class="status-actions-title">Section cards</div>
+          <p class="note">Open or close the detail cards across all tabs.</p>
+          <div class="section-actions" aria-label="Panel sections">
+            <button id="expandAll" type="button">Open all sections</button>
+            <button id="collapseAll" type="button">Close all sections</button>
           </div>
         </div>
-      </details>
-
-      <details class="section">
-        <summary>Display and timing settings</summary>
-        <div class="control">
-          <div class="control-row"><label for="offset">Timing offset</label><output id="offsetValue">+0.0 s</output></div>
-          <input id="offset" type="range" min="-30" max="30" step="0.1" value="0" />
-          <div class="offset-actions">
-            <button type="button" data-offset-delta="-0.5">0.5 s earlier</button>
-            <button type="button" data-offset-delta="0.5">0.5 s later</button>
-          </div>
-        </div>
-        <div class="control">
-          <div class="control-row"><label for="fontSize">Font size</label><output id="fontSizeValue">38 px</output></div>
-          <input id="fontSize" type="range" min="20" max="72" step="1" value="38" />
-        </div>
-        <div class="control">
-          <div class="control-row"><label for="bottom">Height from bottom</label><output id="bottomValue">10%</output></div>
-          <input id="bottom" type="range" min="3" max="45" step="1" value="10" />
-        </div>
-        <label class="toggle"><input id="showDiagnostics" type="checkbox" />Show playback diagnostic panel</label>
-        <button id="clear" class="clear" type="button">Remove loaded subtitles</button>
-      </details>
-
-      <details class="section">
-        <summary>Playback details</summary>
-        <dl>
-          <dt>Current time</dt><dd id="time">--</dd>
-          <dt>Duration</dt><dd id="duration">--</dd>
-          <dt>Playback</dt><dd id="playback">--</dd>
-          <dt>Rate</dt><dd id="rate">--</dd>
-          <dt>Fullscreen</dt><dd id="fullscreen">--</dd>
-        </dl>
-      </details>
+      </section>
     </main>
+    <script src="tabs.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
