@@ -36,135 +36,157 @@
         <button id="signOut" class="text-button">Sign out</button>
       </section>
 
-      <details id="libraryCard" class="card collapsible-card" open>
-        <summary>
-          <span>
-            <span class="eyebrow">Authorized library</span>
-            <strong>My subtitles</strong>
-          </span>
-          <span class="summary-meta" id="libraryCount">0 available</span>
-        </summary>
-        <div class="panel-body">
-          <div class="context" id="pageContext">Open a supported video.</div>
-          <div class="inline-row">
-            <input id="trackSearch" class="compact-input" type="search" placeholder="Search title, episode or language" aria-label="Search authorized subtitles">
-            <button id="refreshTracks" class="small-button">Refresh</button>
-          </div>
-          <div id="trackList" class="track-list"></div>
-          <div id="selectedTrack" class="selection-banner">No subtitle selected</div>
-        </div>
-      </details>
+      <nav class="tab-bar" role="tablist" aria-label="Subtitle Companion sections">
+        <button id="tabLibrary" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="panelLibrary" data-customer-tab="library">Library</button>
+        <button id="tabControls" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panelControls" data-customer-tab="controls">Controls</button>
+        <button id="tabStudy" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panelStudy" data-customer-tab="study">Study</button>
+        <button id="tabSupport" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panelSupport" data-customer-tab="support">Support</button>
+      </nav>
 
-      <details id="multiSubtitleCard" class="card collapsible-card">
-        <summary>
-          <span>
-            <span class="eyebrow">Authorized library</span>
-            <strong>Multi Subtitle</strong>
-          </span>
-          <span class="summary-meta">2 tracks</span>
-        </summary>
-        <div class="panel-body">
-          <p class="muted panel-copy">Choose two authorized subtitles. Both are loaded in memory only and remain protected by the same account permissions.</p>
-          <label>Sub 1<select id="multiPrimary"></select></label>
-          <label>Sub 2<select id="multiSecondary"></select></label>
-          <div class="two-column-actions">
-            <button id="startMulti" class="primary flat">Start Multi Subtitle</button>
-            <button id="clearSecondary" class="secondary flat">Single subtitle</button>
-          </div>
-        </div>
-      </details>
-
-      <section id="controllerCard" class="card controller-card">
-        <div class="controller-head">
-          <div class="status-chip" id="syncStatus">NO VIDEO</div>
-          <div class="position-readout" id="positionStatus">00:00 / 00:00</div>
-          <div class="track-readout" id="trackStatus">No subtitle loaded</div>
-        </div>
-
-        <details class="control-section" open>
-          <summary>Playback</summary>
-          <div class="chip-row four">
-            <button id="seekBack" class="control-chip">-5</button>
-            <button id="playPause" class="control-chip primary-chip">Play</button>
-            <button id="seekForward" class="control-chip">+5</button>
-            <button id="speed" class="control-chip">1.0x</button>
+      <section id="panelLibrary" class="tab-panel active" role="tabpanel" aria-labelledby="tabLibrary" data-tab-panel="library">
+        <details id="libraryCard" class="card collapsible-card" open>
+          <summary>
+            <span>
+              <span class="eyebrow">Authorized library</span>
+              <strong>My subtitles</strong>
+            </span>
+            <span class="summary-meta" id="libraryCount">0 available</span>
+          </summary>
+          <div class="panel-body">
+            <div class="context" id="pageContext">Open a supported video.</div>
+            <div class="inline-row">
+              <input id="trackSearch" class="compact-input" type="search" placeholder="Search title, episode or language" aria-label="Search authorized subtitles">
+              <button id="refreshTracks" class="small-button">Refresh</button>
+            </div>
+            <div id="trackList" class="track-list"></div>
+            <div id="selectedTrack" class="selection-banner">No subtitle selected</div>
           </div>
         </details>
 
-        <details class="control-section">
-          <summary>Subtitle timing &amp; size</summary>
-          <label class="switch-row"><span>Show subtitles</span><input id="visible" type="checkbox" checked></label>
-          <div class="chip-row four">
-            <button id="syncEarlier" class="control-chip">-.5</button>
-            <button id="syncLater" class="control-chip">+.5</button>
-            <button id="fontSmaller" class="control-chip text-small">a</button>
-            <button id="fontLarger" class="control-chip text-large">A</button>
+        <details id="multiSubtitleCard" class="card collapsible-card">
+          <summary>
+            <span>
+              <span class="eyebrow">Authorized library</span>
+              <strong>Multi Subtitle</strong>
+            </span>
+            <span class="summary-meta">2 tracks</span>
+          </summary>
+          <div class="panel-body">
+            <p class="muted panel-copy">Choose two authorized subtitles. Both are loaded in memory only and use the same account permissions.</p>
+            <label>Sub 1<select id="multiPrimary"></select></label>
+            <label>Sub 2<select id="multiSecondary"></select></label>
+            <div class="two-column-actions">
+              <button id="startMulti" class="primary flat">Start Multi Subtitle</button>
+              <button id="clearSecondary" class="secondary flat">Single subtitle</button>
+            </div>
           </div>
-          <div class="control-meta"><span>Sync</span><strong id="offsetValue">+0.0s</strong><span>Size</span><strong id="fontValue">38px</strong></div>
-        </details>
-
-        <details class="control-section">
-          <summary>Subtitle position</summary>
-          <div class="chip-row three">
-            <button id="moveDown" class="control-chip">Down</button>
-            <button id="moveUp" class="control-chip">Up</button>
-            <button id="resetPosition" class="control-chip">Reset</button>
-          </div>
-          <div class="control-meta two"><span>Bottom</span><strong id="bottomValue">10%</strong></div>
-        </details>
-
-        <details id="secondaryControls" class="control-section" hidden>
-          <summary>Sub 2 size &amp; position</summary>
-          <div class="chip-row four">
-            <button id="secondarySmaller" class="control-chip text-small">a</button>
-            <button id="secondaryLarger" class="control-chip text-large">A</button>
-            <button id="secondaryDown" class="control-chip">Down</button>
-            <button id="secondaryUp" class="control-chip">Up</button>
-          </div>
-          <div class="two-column-actions compact-actions">
-            <button id="secondaryReset" class="secondary flat">Reset Sub 2</button>
-            <button id="secondaryRemove" class="secondary flat">Remove Sub 2</button>
-          </div>
-          <div class="control-meta"><span>Bottom</span><strong id="secondaryBottomValue">20%</strong><span>Size</span><strong id="secondaryFontValue">34px</strong></div>
-        </details>
-
-        <details id="studySection" class="control-section">
-          <summary>Study mode</summary>
-          <div class="segmented" role="group" aria-label="Viewing mode">
-            <button id="watchMode" class="active">Watch</button>
-            <button id="studyMode">Study</button>
-          </div>
-          <div class="repeat-row">
-            <button id="repeatMinus" class="control-chip small-chip">-</button>
-            <strong id="repeatValue">5x</strong>
-            <button id="repeatPlus" class="control-chip small-chip">+</button>
-          </div>
-          <div class="study-actions">
-            <button id="repeatCurrent" class="control-chip wide-chip">Repeat current</button>
-            <button id="playSelections" class="control-chip wide-chip">Play saved</button>
-            <button id="stopStudy" class="control-chip">Stop</button>
-            <button id="clearStudy" class="control-chip">Clear</button>
-          </div>
-          <p id="viewerStatus" class="muted viewer-status"></p>
         </details>
       </section>
 
-      <details id="savedCard" class="card collapsible-card">
-        <summary>
-          <span>
-            <span class="eyebrow">Study mode</span>
-            <strong>Saved lines</strong>
-          </span>
-          <span class="summary-meta" id="savedCount">0 saved</span>
-        </summary>
-        <div class="panel-body">
-          <div id="savedList" class="saved-list"></div>
-        </div>
-      </details>
+      <section id="panelControls" class="tab-panel" role="tabpanel" aria-labelledby="tabControls" data-tab-panel="controls" hidden>
+        <section id="controllerCard" class="card controller-card">
+          <div class="controller-head">
+            <div class="status-chip" id="syncStatus">NO VIDEO</div>
+            <div class="position-readout" id="positionStatus">00:00 / 00:00</div>
+            <div class="track-readout" id="trackStatus">No subtitle loaded</div>
+          </div>
 
-      <section class="help-card">
-        <button id="requestVideo">Request a subtitle</button>
-        <button id="reportError">Report an issue</button>
+          <details class="control-section" open>
+            <summary>Playback</summary>
+            <div class="chip-row four">
+              <button id="seekBack" class="control-chip">-5</button>
+              <button id="playPause" class="control-chip primary-chip">Play</button>
+              <button id="seekForward" class="control-chip">+5</button>
+              <button id="speed" class="control-chip">1.0x</button>
+            </div>
+          </details>
+
+          <details class="control-section" open>
+            <summary>Subtitle timing &amp; size</summary>
+            <label class="switch-row"><span>Show subtitles</span><input id="visible" type="checkbox" checked></label>
+            <div class="chip-row four">
+              <button id="syncEarlier" class="control-chip">-.5</button>
+              <button id="syncLater" class="control-chip">+.5</button>
+              <button id="fontSmaller" class="control-chip text-small">a</button>
+              <button id="fontLarger" class="control-chip text-large">A</button>
+            </div>
+            <div class="control-meta"><span>Sync</span><strong id="offsetValue">+0.0s</strong><span>Size</span><strong id="fontValue">38px</strong></div>
+          </details>
+
+          <details class="control-section">
+            <summary>Subtitle position</summary>
+            <div class="chip-row three">
+              <button id="moveDown" class="control-chip">Down</button>
+              <button id="moveUp" class="control-chip">Up</button>
+              <button id="resetPosition" class="control-chip">Reset</button>
+            </div>
+            <div class="control-meta two"><span>Bottom</span><strong id="bottomValue">10%</strong></div>
+          </details>
+
+          <details id="secondaryControls" class="control-section" hidden>
+            <summary>Sub 2 size &amp; position</summary>
+            <div class="chip-row four">
+              <button id="secondarySmaller" class="control-chip text-small">a</button>
+              <button id="secondaryLarger" class="control-chip text-large">A</button>
+              <button id="secondaryDown" class="control-chip">Down</button>
+              <button id="secondaryUp" class="control-chip">Up</button>
+            </div>
+            <div class="two-column-actions compact-actions">
+              <button id="secondaryReset" class="secondary flat">Reset Sub 2</button>
+              <button id="secondaryRemove" class="secondary flat">Remove Sub 2</button>
+            </div>
+            <div class="control-meta"><span>Bottom</span><strong id="secondaryBottomValue">20%</strong><span>Size</span><strong id="secondaryFontValue">34px</strong></div>
+          </details>
+        </section>
+      </section>
+
+      <section id="panelStudy" class="tab-panel" role="tabpanel" aria-labelledby="tabStudy" data-tab-panel="study" hidden>
+        <section class="card controller-card study-card">
+          <details id="studySection" class="control-section" open>
+            <summary>Study mode</summary>
+            <div class="segmented" role="group" aria-label="Viewing mode">
+              <button id="watchMode" class="active">Watch</button>
+              <button id="studyMode">Study</button>
+            </div>
+            <div class="repeat-row">
+              <button id="repeatMinus" class="control-chip small-chip">-</button>
+              <strong id="repeatValue">5x</strong>
+              <button id="repeatPlus" class="control-chip small-chip">+</button>
+            </div>
+            <div class="study-actions">
+              <button id="repeatCurrent" class="control-chip wide-chip">Repeat current</button>
+              <button id="playSelections" class="control-chip wide-chip">Play saved</button>
+              <button id="stopStudy" class="control-chip">Stop</button>
+              <button id="clearStudy" class="control-chip">Clear</button>
+            </div>
+            <p id="viewerStatus" class="muted viewer-status"></p>
+          </details>
+        </section>
+
+        <details id="savedCard" class="card collapsible-card" open>
+          <summary>
+            <span>
+              <span class="eyebrow">Study mode</span>
+              <strong>Saved lines</strong>
+            </span>
+            <span class="summary-meta" id="savedCount">0 saved</span>
+          </summary>
+          <div class="panel-body">
+            <div id="savedList" class="saved-list"></div>
+          </div>
+        </details>
+      </section>
+
+      <section id="panelSupport" class="tab-panel" role="tabpanel" aria-labelledby="tabSupport" data-tab-panel="support" hidden>
+        <section class="card support-card">
+          <span class="eyebrow">Customer support</span>
+          <h2>Need another subtitle?</h2>
+          <p class="muted support-copy">Request a subtitle or report a timing, translation, or display problem.</p>
+          <div class="support-actions">
+            <button id="requestVideo" class="primary flat">Request a subtitle</button>
+            <button id="reportError" class="secondary flat">Report an issue</button>
+          </div>
+        </section>
       </section>
     </section>
 
