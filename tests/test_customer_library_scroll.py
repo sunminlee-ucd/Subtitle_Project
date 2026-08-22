@@ -29,4 +29,4 @@ def test_customer_library_scrollbar_is_visually_distinct() -> None:
 def test_customer_extension_version_includes_scroll_change() -> None:
     manifest = (EXTENSION / "manifest.json").read_text(encoding="utf-8")
 
-    assert '"version": "0.3.3"' in manifest
+    assert '"version": "0.3.4"' in manifest

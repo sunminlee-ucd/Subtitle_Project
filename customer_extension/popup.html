@@ -6,6 +6,7 @@
   <title>Subtitle Companion</title>
   <link rel="stylesheet" href="popup.css">
   <link rel="stylesheet" href="overlay-toggle.css">
+  <link rel="stylesheet" href="google-auth.css">
 </head>
 <body>
   <header>
@@ -26,6 +27,12 @@
       <label>Email<input id="email" type="email" autocomplete="email"></label>
       <label>Password<input id="password" type="password" autocomplete="current-password"></label>
       <button id="signIn" class="primary">Sign in</button>
+      <div class="auth-divider" aria-hidden="true"><span>or</span></div>
+      <button id="googleSignIn" class="google-signin-button" type="button">
+        <img class="google-signin-logo" src="google-g.svg" alt="" aria-hidden="true">
+        <span id="googleSignInLabel">Continue with Google</span>
+      </button>
+      <p class="google-signin-note">Google sign-in opens securely in a separate window.</p>
     </section>
 
     <section id="workspace" hidden>
@@ -208,5 +215,6 @@
   <script src="tabs.js"></script>
   <script src="popup.js"></script>
   <script src="overlay-toggle.js"></script>
+  <script src="google-auth-ui.js"></script>
 </body>
 </html>
