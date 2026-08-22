@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Subtitle Companion",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Watch authorized translated subtitles in sync on supported streaming sites.",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "identity"],
   "host_permissions": [
     "https://*.netflix.com/*",
     "https://*.disneyplus.com/*",
