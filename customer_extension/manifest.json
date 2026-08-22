@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Subtitle Companion",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Watch authorized translated subtitles in sync on supported streaming sites.",
   "permissions": ["activeTab", "storage"],
   "host_permissions": [
