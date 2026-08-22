@@ -48,7 +48,33 @@
   outline:3px solid rgba(229,9,20,.36);
   outline-offset:2px;
 }
+
+/* Keep the authorized library compact even when a customer has many tracks. */
+#libraryCard .track-list {
+  height:190px;
+  max-height:190px;
+  overflow-x:hidden;
+  overflow-y:scroll;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  align-content:start;
+  padding-right:4px;
+}
+#libraryCard .track-list::-webkit-scrollbar { width:8px; }
+#libraryCard .track-list::-webkit-scrollbar-track {
+  border-radius:999px;
+  background:#0c0d10;
+}
+#libraryCard .track-list::-webkit-scrollbar-thumb {
+  min-height:34px;
+  border:2px solid #0c0d10;
+  border-radius:999px;
+  background:#5a2a2f;
+}
+#libraryCard .track-list::-webkit-scrollbar-thumb:hover { background:#814047; }
+
 @media (max-width:420px) {
   .overlay-power-card { gap:7px; padding:9px 10px; }
   .overlay-power-button { min-width:128px; padding-inline:10px; }
+  #libraryCard .track-list { height:180px; max-height:180px; }
 }
