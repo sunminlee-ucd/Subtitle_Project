@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Subtitle Companion</title>
   <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="overlay-toggle.css">
 </head>
 <body>
   <header>
@@ -34,6 +35,14 @@
           <strong id="userEmail"></strong>
         </div>
         <button id="signOut" class="text-button">Sign out</button>
+      </section>
+
+      <section class="overlay-power-card" aria-label="Overlay quick control">
+        <div class="overlay-power-copy">
+          <span class="eyebrow">Quick overlay control</span>
+          <strong id="overlayPowerStatus">Overlay is on</strong>
+        </div>
+        <button id="overlayPower" class="overlay-power-button running" type="button" aria-pressed="true">STOP OVERLAY</button>
       </section>
 
       <nav class="tab-bar" role="tablist" aria-label="Subtitle Companion sections">
@@ -198,5 +207,6 @@
   <script src="subtitle-core.js"></script>
   <script src="tabs.js"></script>
   <script src="popup.js"></script>
+  <script src="overlay-toggle.js"></script>
 </body>
 </html>
