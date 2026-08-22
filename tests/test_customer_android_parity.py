@@ -65,6 +65,29 @@ def test_customer_extension_has_android_style_controls() -> None:
     assert "secondaryTrackId" in content
 
 
+def test_customer_extension_uses_tabs_and_android_dark_red_theme() -> None:
+    html = (EXTENSION / "popup.html").read_text(encoding="utf-8")
+    css = (EXTENSION / "popup.css").read_text(encoding="utf-8").lower()
+    tabs = (EXTENSION / "tabs.js").read_text(encoding="utf-8")
+
+    for tab in ("library", "controls", "study", "support"):
+        assert f'data-customer-tab="{tab}"' in html
+        assert f'data-tab-panel="{tab}"' in html
+
+    assert '<script src="tabs.js"></script>' in html
+    assert 'showTab("library")' in tabs
+    assert 'panel.hidden = !active' in tabs
+    assert 'button.setAttribute("aria-selected"' in tabs
+
+    assert "--surface:#08090c" in css
+    assert "--card:#14151a" in css
+    assert "--primary:#e50914" in css
+    assert "--primary-dark:#b20710" in css
+    assert "--text:#f7f7f8" in css
+    assert ".tab-button.active" in css
+    assert "background:var(--primary)" in css
+
+
 def test_customer_extension_still_loads_only_authorized_tracks() -> None:
     popup = (EXTENSION / "popup.js").read_text(encoding="utf-8")
     background = (EXTENSION / "background.js").read_text(encoding="utf-8")
